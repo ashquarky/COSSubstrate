@@ -4,6 +4,8 @@
 
 #include "ppc_asm.h"
 
+//WIP
+
 #void RunCodeAsKernel(void(*codeToRun))
 .globl RunCodeAsKernel
 RunCodeAsKernel:
