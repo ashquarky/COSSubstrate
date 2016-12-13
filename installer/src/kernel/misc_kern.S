@@ -12,7 +12,11 @@
 .set KERN_SYSCALL_TBL_5,	0xFFEAAE60 // works with browser (previously KERN_SYSCALL_TBL)
 
 .set IMPROVED_KERN_READ,	0xFFF02044 //lwzx r3, r9, r10; rfi
+.set IMPROVED_KERN_WRITE, 	0xFFF02068 //stwx r5, r9, r10; rfi
 
+/*	Installs some of the various kernelmode functions used by the installer and the Substrate.
+	void InstallKernFunctions()
+*/
 .globl InstallKernFunctions
 InstallKernFunctions:
 	mflr r0
@@ -20,7 +24,7 @@ InstallKernFunctions:
 	stwu r1, -16(r1)
 
 	//Inject syscall 0x2300 (improved_kern_read)
-	lis r3, (KERN_SYSCALL_TBL_2 + 0x8C)@ha //
+	lis r3, (KERN_SYSCALL_TBL_2 + 0x8C)@ha //0x8C = 0x23 * 4
 	ori r3, r3, (KERN_SYSCALL_TBL_2 + 0x8C)@l
 
 	lis r4, IMPROVED_KERN_READ@ha
@@ -28,6 +32,16 @@ InstallKernFunctions:
 
 	bl old_kern_write
 
+	//Inject syscall 0x2400 (improved_kern_write)
+	lis r3, (KERN_SYSCALL_TBL_2 + 0x90)@ha //0x90 = 0x24 * 4
+	ori r3, r3, (KERN_SYSCALL_TBL_2 + 0x90)@l
+
+	lis r4, IMPROVED_KERN_WRITE@ha
+	ori r4, r4, IMPROVED_KERN_WRITE@l
+
+	bl old_kern_write
+
+	//Put everything back to normal and return
 	addi r1, r1, 16
 	lwz r0, 4(r1)
 	mtlr r0
@@ -47,14 +61,41 @@ stack_pointer_save:
 */
 .globl kern_read
 kern_read:
-	mflr r0
-	mr r9, r3
+	mflr r0 //C calling convention
+	mr r9, r3 //Move addr into r9
 	stw r0, 8(r1)
 	lis r4, stack_pointer_save@ha
 	li r10, 0
 	stw r1, stack_pointer_save@l(r4)
 
+	//Syscall 0x2300 points to lwzx r3, r9, r10; rfi
 	li r0, 0x2300
+	sc
+	nop
+
+	lis r4, stack_pointer_save@ha
+	lwz r1, stack_pointer_save@l(r4)
+
+	lwz r0, 8(r1)
+	mtlr r0
+
+	blr
+
+/*	My take on an imporoved kern_write.
+	void kern_write(const void* addr, unsigned int val)
+*/
+.globl kern_write
+kern_write:
+	mflr r0 //C calling convention
+	mr r9, r3 //Move addr into r9
+	stw r0, 8(r1)
+	mr r5, r4
+	lis r4, stack_pointer_save@ha
+	li r10, 0
+	stw r1, stack_pointer_save@l(r4)
+
+	//Syscall 0x2400 points to stwx r5, r9, r10; rfi
+	li r0, 0x2400
 	sc
 	nop
 

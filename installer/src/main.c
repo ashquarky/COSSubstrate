@@ -23,13 +23,16 @@ int Menu_Main() {
 
 	unsigned int* nom = malloc(0x10);
 	log_printf("nom: 0x%08X\n", nom);
-	nom[0] = 0x69696969;
+	nom[0] = 0x00000000;
 	log_printf("*nom: 0x%08X\n", *nom);
+	kern_write(nom, 0x69696969);
+	log_printf("post-kern *nom: 0x%08X\n", *nom);
 	unsigned int nom2 = kern_read(nom);
 	log_printf("post-kern *nom: 0x%08X\n", nom2);
 
 	sleep(2);
 
+	free(nom);
 	log_deinit();
 
 	return 0;
