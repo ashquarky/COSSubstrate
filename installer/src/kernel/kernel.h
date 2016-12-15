@@ -8,6 +8,11 @@
 
 //misc_kern.S
 
+/*	A simple system to run any code as kernel, via syscall 0x36.
+	r3 can be used as an argument if you want, and the code can return a value.
+*/
+extern unsigned int RunCodeAsKernel(void(*codeToRun), unsigned int r3);
+
 /*	Installs some of the various kernelmode functions used by the installer and the Substrate.
 */
 extern void InstallKernFunctions();

@@ -20,7 +20,7 @@
 .globl InstallKernFunctions
 InstallKernFunctions:
 	mflr r0
-	stw r0, 4(r1) //TODO - is this 4 or 8? Does it matter?
+	stw r0, 8(r1) //TODO - is this 4 or 8? Does it matter?
 	stwu r1, -16(r1)
 
 	//Inject syscall 0x2300 (improved_kern_read)
@@ -43,7 +43,7 @@ InstallKernFunctions:
 
 	//Put everything back to normal and return
 	addi r1, r1, 16
-	lwz r0, 4(r1)
+	lwz r0, 8(r1)
 	mtlr r0
 
 	blr

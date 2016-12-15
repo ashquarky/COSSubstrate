@@ -11,6 +11,11 @@
 
 #include "kernel/kernel.h"
 
+//Because why not?
+unsigned int kernelCodeTest(unsigned int arg) {
+	return *((unsigned int*)arg);
+}
+
 int Menu_Main() {
 	InitOSFunctionPointers();
 	InitSocketFunctionPointers();
@@ -29,6 +34,9 @@ int Menu_Main() {
 	log_printf("post-kern *nom: 0x%08X\n", *nom);
 	unsigned int nom2 = kern_read(nom);
 	log_printf("post-kern *nom: 0x%08X\n", nom2);
+
+	nom2 = RunCodeAsKernel(&kernelCodeTest, (unsigned int)nom);
+	log_printf("Custom kernel code *nom: 0x%08X\n", nom2);
 
 	sleep(2);
 
