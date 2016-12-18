@@ -33,15 +33,8 @@ int Menu_Main() {
 	unsigned int nom2 = kern_read(nom);
 	log_printf("post-kern *nom: 0x%08X\n", nom2);
 
-	nom2 = RunCodeAsKernel(&kernelCodeTest, (unsigned int)nom);
-	log_printf("Custom kernel code *nom: 0x%08X\n", nom2);
-
-
 	unsigned int ret = RunCodeAsKernel(&SetupBATs, 0);
 	log_printf("BATs set up! 0x%08X\n", ret);
-
-	log_printf("SPR572 = 0x%08X\n", RunCodeAsKernel(&ReadSPR572, 0));
-	log_printf("SPR573 = 0x%08X\n", RunCodeAsKernel(&ReadSPR573, 0));
 
 	sleep(2);
 
@@ -50,8 +43,6 @@ int Menu_Main() {
 	unsigned int res = *bat;
 	InstallExceptionHandler();
 	log_printf("0x%08X, 0x%08X\n", bat, res);
-	log_printf("SPR572 = 0x%08X\n", RunCodeAsKernel(&ReadSPR572, 0));
-	log_printf("SPR573 = 0x%08X\n", RunCodeAsKernel(&ReadSPR573, 0));
 
 	RunCodeAsKernel(&ClearBATs, 0);
 
