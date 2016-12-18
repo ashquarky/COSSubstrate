@@ -11,11 +11,9 @@
 
 #include "kernel/kernel.h"
 
-//Because why not?
-unsigned int kernelCodeTest(unsigned int arg) {
-	return *((unsigned int*)arg);
-}
-
+/*	At this point, we just test various fundamentals in order to set everything up.
+	Not much actual installing is going on here.
+*/
 int Menu_Main() {
 	InitOSFunctionPointers();
 	InitSocketFunctionPointers();
@@ -38,9 +36,30 @@ int Menu_Main() {
 	nom2 = RunCodeAsKernel(&kernelCodeTest, (unsigned int)nom);
 	log_printf("Custom kernel code *nom: 0x%08X\n", nom2);
 
+
+	unsigned int ret = RunCodeAsKernel(&SetupBATs, 0);
+	log_printf("BATs set up! 0x%08X\n", ret);
+
+	log_printf("SPR572 = 0x%08X\n", RunCodeAsKernel(&ReadSPR572, 0));
+	log_printf("SPR573 = 0x%08X\n", RunCodeAsKernel(&ReadSPR573, 0));
+
+	sleep(2);
+
+	unsigned int* bat = (unsigned int*)0x60000010;
+	InstallAltExceptionHandler();
+	unsigned int res = *bat;
+	InstallExceptionHandler();
+	log_printf("0x%08X, 0x%08X\n", bat, res);
+	log_printf("SPR572 = 0x%08X\n", RunCodeAsKernel(&ReadSPR572, 0));
+	log_printf("SPR573 = 0x%08X\n", RunCodeAsKernel(&ReadSPR573, 0));
+
+	RunCodeAsKernel(&ClearBATs, 0);
+
 	sleep(2);
 
 	free(nom);
+	log_print("Quitting...\n");
+	log_print("------------------------------------\n\n\n");
 	log_deinit();
 
 	return 0;
