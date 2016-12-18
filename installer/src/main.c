@@ -4,8 +4,11 @@
 */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "dynamic_libs/os_functions.h"
 #include "dynamic_libs/socket_functions.h"
+#include "dynamic_libs/fs_functions.h"
+#include "fs/sd_fat_devoptab.h"
 #include "utils/logger.h"
 #include "utils/exception.h"
 
@@ -17,7 +20,10 @@
 int Menu_Main() {
 	InitOSFunctionPointers();
 	InitSocketFunctionPointers();
+	InitFSFunctionPointers();
 	InstallExceptionHandler();
+
+	mount_sd_fat("sd");
 
 	log_init("192.168.192.36");
 	log_print("Hello World!\n");
@@ -37,8 +43,6 @@ int Menu_Main() {
 	RunCodeAsKernel(&SetupBATs, 0);
 	log_print("BAT mappings set up!\n");
 
-	sleep(2);
-
 	unsigned int* bat = (unsigned int*)0x60000010;
 	InstallAltExceptionHandler();
 	unsigned int res = *bat;
@@ -47,9 +51,18 @@ int Menu_Main() {
 
 	RunCodeAsKernel(&ClearBATs, 0);
 
-	sleep(2);
+	FILE* fd = fopen("sd:/lib.elf", "rb");
+	fseek(fd, 0L, SEEK_END);
+	unsigned int fs = ftell(fd);
+	fseek(fd, 0L, SEEK_SET);
 
+	char buf[4];
+	fread((void*)buf, 4, 1, fd);
+	log_printf("fd: %08X, size: %08X, f[0][1][2]: %c%c%c\n", fd, fs, buf[0], buf[1], buf[2]);
+
+	fclose(fd);
 	free(nom);
+	unmount_sd_fat("sd");
 	log_print("Quitting...\n");
 	log_print("------------------------------------\n\n\n");
 	log_deinit();
