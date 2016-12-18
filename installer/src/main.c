@@ -25,16 +25,17 @@ int Menu_Main() {
 	InstallKernFunctions();
 
 	unsigned int* nom = malloc(0x10);
-	log_printf("nom: 0x%08X\n", nom);
+	log_printf("Memory allocated at 0x%08X\n", nom);
 	nom[0] = 0x00000000;
-	log_printf("*nom: 0x%08X\n", *nom);
+	log_printf("Pre-write memory value: 0x%08X\n", *nom);
+	log_print("Compare this value with the kern_write test below.\n");
 	kern_write(nom, 0x69696969);
-	log_printf("post-kern *nom: 0x%08X\n", *nom);
+	log_printf("kern_write test (expect 0x69696969): 0x%08X\n", *nom);
 	unsigned int nom2 = kern_read(nom);
-	log_printf("post-kern *nom: 0x%08X\n", nom2);
+	log_printf("kern_read test (expect 0x69696969): 0x%08X\n", nom2);
 
-	unsigned int ret = RunCodeAsKernel(&SetupBATs, 0);
-	log_printf("BATs set up! 0x%08X\n", ret);
+	RunCodeAsKernel(&SetupBATs, 0);
+	log_print("BAT mappings set up!\n");
 
 	sleep(2);
 
@@ -42,7 +43,7 @@ int Menu_Main() {
 	InstallAltExceptionHandler();
 	unsigned int res = *bat;
 	InstallExceptionHandler();
-	log_printf("0x%08X, 0x%08X\n", bat, res);
+	log_printf("Value of 0x%08X (0xDEADC0DE = fail): 0x%08X\n", bat, res);
 
 	RunCodeAsKernel(&ClearBATs, 0);
 
