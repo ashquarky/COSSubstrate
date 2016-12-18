@@ -47,4 +47,16 @@ void InstallExceptionHandler() {
 	OSSetExceptionCallback(3, &exception_handler);
 	OSSetExceptionCallback(6, &exception_handler);
 }
+
+unsigned char adv_pc(void* ctx) {
+	((unsigned int*)ctx)[38] += 4;
+	((unsigned int*)ctx)[6] = 0xDEADC0DE;
+
+	return 1;
+}
+void InstallAltExceptionHandler() {
+	OSSetExceptionCallback(2, &adv_pc);
+	OSSetExceptionCallback(3, &adv_pc);
+	OSSetExceptionCallback(6, &adv_pc);
+}
 #endif //__EXCEPTION_H__
