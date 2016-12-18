@@ -35,7 +35,8 @@ SOURCES		:=	src \
 				src/dynamic_libs \
 				src/kernel \
 				src/system \
-				src/utils
+				src/utils \
+				src/fs
 DATA		:=
 
 INCLUDES	:=  src
