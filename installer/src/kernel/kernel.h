@@ -43,6 +43,9 @@ extern void old_kern_write(const void* addr, unsigned int val);
 */
 extern _kernelmode_ void SetupBATs();
 
+#define COSS_MEM_BASE 0x60000000
+#define COSS_MEM_SIZE 0x00800000
+
 /*	Clears our mappings, returning the console to the way it was before.
 */
 extern _kernelmode_ void ClearBATs();
