@@ -36,5 +36,5 @@ int Menu_Main() {
 	unmount_sd_fat("sd");
 	log_deinit();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
