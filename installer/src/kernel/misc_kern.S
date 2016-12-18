@@ -52,7 +52,7 @@ InstallKernFunctions:
 	This is it.
 */
 stack_pointer_save:
-	.int
+	.int 0x00000000
 
 /*	My take on an imporoved kern_read.
 	I tried to make it superscalar where I could, which makes it tough to read.

@@ -12,7 +12,7 @@
 .set KERN_SYSCALL_TBL_5,	0xFFEAAE60 // works with browser (previously KERN_SYSCALL_TBL)
 
 stack_pointer_save:
-	.int
+	.int 0x00000000
 
 /*	A simple system to run any code as kernel, via syscall 0x36.
 	r3 can be used as an argument if you want, and the code can return a value.
