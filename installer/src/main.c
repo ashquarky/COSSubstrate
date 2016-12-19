@@ -61,7 +61,7 @@ int Menu_Main() {
 	log_printf("Substrate allocated at 0x%08X\n", substrate_mem);
 	if (!substrate_mem) goto quit;
 	fread(substrate_mem, substrate_size, 1, substrate);
-	log_printf("Read in Substrate! ELF magic: %c%c%c 0x%02X\n", ((char*)substrate_mem)[0], ((char*)substrate_mem)[1], ((char*)substrate_mem)[2], ((char*)substrate_mem)[3]);
+	log_printf("Read in Substrate! ELF magic: 0x%02X %c%c%c\n", ((char*)substrate_mem)[0], ((char*)substrate_mem)[1], ((char*)substrate_mem)[2], ((char*)substrate_mem)[3]);
 
 quit:
 	fclose(substrate);
