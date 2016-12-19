@@ -1,0 +1,3 @@
+[submodule "installer/ext/UDynLoad"]
+	path = installer/ext/UDynLoad
+	url = https://github.com/QuarkTheAwesome/UDynLoad
