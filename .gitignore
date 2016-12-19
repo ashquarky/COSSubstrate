@@ -2,6 +2,7 @@ build
 compile
 *.bin
 *.idb
+*.cosm
 
 # Object files
 *.o
