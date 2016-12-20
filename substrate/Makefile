@@ -19,8 +19,8 @@ export LD		= $(PREFIX)ld
 export SOURCES	= src
 export TARGET	= substrate.cosm
 
-export CFLAGS	= -c -fPIC
-export LDFLAGS	= -fPIC -shared
+export CFLAGS	= -c -fPIE
+export LDFLAGS	= -fPIE -shared
 
 export CFILES	= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
 export OFILES	= $(foreach cfl,$(CFILES),$(BUILD)/$(dir $(cfl))$(basename $(notdir $(cfl))).o)
