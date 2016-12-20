@@ -36,10 +36,12 @@ SOURCES		:=	src \
 				src/kernel \
 				src/system \
 				src/utils \
-				src/fs
+				src/fs \
+				ext/UDynLoad/api
 DATA		:=
 
-INCLUDES	:=  src
+INCLUDES	:=  src \
+				ext/UDynLoad/api
 
 #---------------------------------------------------------------------------------
 # options for code generation
