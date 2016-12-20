@@ -59,8 +59,10 @@ int Menu_Main() {
 	unsigned int substrate_file_size = ftell(substrate_file);
 	fseek(substrate_file, 0L, SEEK_SET);
 
-	/* Allocate and load Substrate */
-	void* substrate_tmp = MEMAllocFromExpHeapEx(coss_heap, substrate_file_size, 0x10);
+	/*	Allocate temporary Substrate location.
+		This will be where the raw ELF is kept so we can do ELF loadery things.
+	*/
+	void* substrate_tmp = MEMAllocFromExpHeapEx(coss_heap, substrate_file_size, 0x10); //TODO try and allocate at end of heap
 	log_printf("Substrate allocated at 0x%08X\n", substrate_tmp);
 	if (!substrate_tmp) goto quit;
 	fread(substrate_tmp, substrate_file_size, 1, substrate_file);
@@ -73,25 +75,30 @@ int Menu_Main() {
 		goto quit;
 	}
 
-	/* Do program headery things */
+	/* Get a pointer to the Substrate's program header table */
 	Elf32_Phdr* substrate_phdrs = ((Elf32_Ehdr*)substrate_tmp)->e_phoff + substrate_tmp;
 	log_printf("Substrate program header table at 0x%08X\n", substrate_phdrs);
-	/*	Try to calculate how much memory we'll need
+
+	/*	Try to calculate how much memory we'll need.
 		This could take some serious love from someone who knows
 		what they're doing.
 	*/
 	unsigned int substrate_size = 0;
 	int tmp = 0;
+	/* For each program header... */
 	for (int i = 0; i < ((Elf32_Ehdr*)substrate_tmp)->e_phnum; i++) {
 		if(substrate_phdrs[i].p_type == PT_LOAD) {
+			/* Get the difference between the destination address and our current size estimate */
 			tmp = substrate_phdrs[i].p_vaddr - substrate_size;
 			/*	This is problematic. If the difference between offset and p_vaddr
-				is too big, the section will be skipped, and likely sections past
-				it as well.
+				is too big, the result will wrap into negatives, the section
+				will be skipped, and likely sections past it as well.
 				Hopefully we don't get an ELF this large.
 			*/
 			if (tmp < 0) continue;
-
+			/*	If the destination address is larger than the current size estimate...
+				Update the size estimate.
+			*/
 			substrate_size += tmp;
 			substrate_size += substrate_phdrs[i].p_memsz;
 		}
@@ -99,15 +106,19 @@ int Menu_Main() {
 
 	log_printf("Size of loaded application: 0x%08X\n", substrate_size);
 
+	/* Allocate space for the actual Substrate */
 	void* substrate = MEMAllocFromExpHeapEx(coss_heap, substrate_size, 0x10);
 	memset(substrate, 0, substrate_size);
 
 	void* dynamic = 0;
 
+	/* For each program header... */
 	for (int i = 0; i < ((Elf32_Ehdr*)substrate_tmp)->e_phnum; i++) {
 		if (substrate_phdrs[i].p_type == PT_LOAD) {
+			/* Copy PT_LOAD headers into the destination */
 			memcpy(substrate + substrate_phdrs[i].p_vaddr, substrate_tmp + substrate_phdrs[i].p_offset, substrate_phdrs[i].p_filesz);
 		} else if (substrate_phdrs[i].p_type == PT_DYNAMIC) {
+			/* Do the same for PT_DYNAMIC, but also take a note of where it ends up */
 			memcpy(substrate + substrate_phdrs[i].p_vaddr, substrate_tmp + substrate_phdrs[i].p_offset, substrate_phdrs[i].p_filesz);
 			dynamic = substrate + substrate_phdrs[i].p_vaddr;
 		}
@@ -115,11 +126,18 @@ int Menu_Main() {
 
 	log_printf("Substrate loaded into 0x%08X\n", substrate);
 
+	/* Free the temporary file storage */
+	MEMFreeToExpHeap(coss_heap, substrate_tmp);
+
+	/* Flush everything to main memory and invalidate the instruction cache */
 	DCFlushRange(substrate, substrate_size);
 	ICInvalidateRange(substrate, substrate_size);
 
 	/* Testing code from here on out */
 	int (*_start)();
+	/*	Since we've followed the program headers, we have to use
+		FindExportDynamic to get the function. The normal FindExport uses
+		.symtab and .strtab, which didn't make it past the loading phase. */
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "_start", (void**)&_start);
 	log_printf("FindExport: 0x%08X, %d\n", _start, res);
 	res = _start();
