@@ -31,22 +31,26 @@ ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPRO")
 endif
 
+export SOURCES	= src
+export TARGET	= substrate.cosm
+export INCLUDES	= ../api
+export LIBDIRS	=
+
 export BUILD	= build
 
-export PATH		:=$(DEVKITPPC)/bin:$(PORTLIBS)/bin:$(PATH)
+export PATH		:=$(DEVKITPPC)/bin:$(PATH)
 
 export PREFIX	= powerpc-eabi-
 export CC		= $(PREFIX)gcc
 export LD		= $(PREFIX)ld
-
-export SOURCES	= src
-export TARGET	= substrate.cosm
 
 export CFLAGS	= -c -fPIE
 export LDFLAGS	= -fPIE -shared
 
 export CFILES	= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
 export OFILES	= $(foreach cfl,$(CFILES),$(BUILD)/$(dir $(cfl))$(basename $(notdir $(cfl))).o)
+export INCLUDE	= $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+				  $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
 all: setup $(TARGET)
 
@@ -60,7 +64,7 @@ $(TARGET): $(OFILES)
 
 $(OFILES): $(CFILES)
 	@echo Compiling $<...
-	@$(CC) $(CFLAGS) -o $@ $<
+	@$(CC) $(CFLAGS) $(INCLUDE) -o $@ $<
 
 clean:
 	rm -rdf $(BUILD)

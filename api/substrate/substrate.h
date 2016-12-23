@@ -1,6 +1,6 @@
 /*	Cafe OS Substrate
 
-	main.c - Main Substrate logic.
+	substrate.h - Substrate API Header.
 	No partner file.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
@@ -23,22 +23,38 @@
 	THE SOFTWARE.
 */
 
-#include <substrate/substrate.h>
+#ifndef _COS_SUBSTRATE_H_
+#define _COS_SUBSTRATE_H_
 
-int testSubroutine() {
-	return 0x69690000;
-}
-
-int _start() {
-	return testSubroutine() | 0x6969;
-}
-
-/*	Takes in data from the Installer and arranges it in memory.
-	This minimizes updates to the Installer.
+/*	This API is still under active development.
+	It could change at any time without warning, and without
+	updating these numbers.
+	The major version will be incremented to 1 when semantic versioning
+	takes effect.
 */
-void private_doSetup(void* substrate, void* substrateDynamic, void* OSDynLoad_Acquire, void* OSDynLoad_FindExport) {
-	COSS_SPECIFICS->substrate = substrate;
-	COSS_SPECIFICS->substrateDynamic = substrateDynamic;
-	COSS_SPECIFICS->OSDynLoad_Acquire = OSDynLoad_Acquire;
-	COSS_SPECIFICS->OSDynLoad_FindExport = OSDynLoad_FindExport;
-}
+#define COSS_API_MAJOR 0
+#define COSS_API_MINOR 0
+#define COSS_API_PATCH 1
+
+typedef struct _COSSubstrate_Specifics {
+	/* Used for dynamic linking */
+	void* substrate;
+	void* substrateDynamic;
+
+	/* Average Wii U junk */
+	int (*OSDynLoad_Acquire)(const char* rpl, unsigned int* handle);
+	int (*OSDynLoad_FindExport)(unsigned int handle, int isdata, const char* symbol, void* address);
+} COSSubstrate_Specifics;
+
+#define COSS_MEM_BASE (void*)0x60000000
+#define COSS_MEM_SIZE 0x00800000
+
+#define COSS_MAIN_HEAP_OFFSET +0x200
+#define COSS_MAIN_HEAP_SIZE_OFFSET -0x200
+
+#define COSS_MAIN_HEAP (void*)(COSS_MEM_BASE COSS_MAIN_HEAP_OFFSET)
+#define COSS_MAIN_HEAP_SIZE (COSS_MEM_SIZE COSS_MAIN_HEAP_SIZE_OFFSET)
+
+#define COSS_SPECIFICS ((COSSubstrate_Specifics*)COSS_MEM_BASE)
+
+#endif //_COS_SUBSTRATE_H_

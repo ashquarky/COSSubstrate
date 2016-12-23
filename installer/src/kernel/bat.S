@@ -33,6 +33,8 @@
 	| End   | 0x34000000 | 0x60800000 |
 	|---------------------------------|
 
+	ANY CHANGES MUST BE REFLECTED IN THE SUBSTRATE API HEADER
+
 	_kernelmode_ void SetupBATs();
 */
 .globl SetupBATs

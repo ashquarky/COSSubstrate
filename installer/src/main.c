@@ -36,6 +36,9 @@
 
 #include "kernel/kernel.h"
 
+#include <substrate/substrate.h> /* /api/substrate/substrate.h */
+#include <substrate/substrate_private.h>
+
 #include <UDynLoad.h>
 #include <elf_abi.h>
 
@@ -68,8 +71,7 @@ int Menu_Main() {
 		This is the heap that will be used for basically everything.
 	*/
 	memset((void*)COSS_MEM_BASE, 0, COSS_MEM_SIZE);
-	//TODO move the following magic numbers into a standard API header
-	int coss_heap = MEMCreateExpHeapEx((void*)COSS_MEM_BASE + 0x200 /*Leave 0x200 bytes for... stuff*/, COSS_MEM_SIZE - 0x200, 0);
+	int coss_heap = MEMCreateExpHeapEx(COSS_MAIN_HEAP, COSS_MAIN_HEAP_SIZE, 0);
 
 	/*	Load Substrate from SD */
 	FILE* substrate_file = fopen("sd:/substrate.cosm", "rb"); //TODO change path
@@ -154,7 +156,6 @@ int Menu_Main() {
 	ICInvalidateRange(substrate, substrate_size);
 
 	/* Testing code from here on out */
-	int (*_start)();
 	/*	Since we've followed the program headers, we have to use
 		FindExportDynamic to get the function. The normal FindExport uses
 		.symtab and .strtab, which didn't make it past the loading phase. */
@@ -163,6 +164,10 @@ int Menu_Main() {
 	res = _start();
 	log_printf("_start: 0x%08X\n", res);
 
+	res = UDynLoad_FindExportDynamic(substrate, dynamic, "private_doSetup", (void**)&private_doSetup);
+	log_printf("FindExport: 0x%08X, %d\n", private_doSetup, res);
+	private_doSetup(substrate, dynamic, OSDynLoad_Acquire, OSDynLoad_FindExport);
+	log_printf("Did setup! substrate: 0x%08X\n", COSS_SPECIFICS->substrate);
 quit:
 	fclose(substrate_file);
 

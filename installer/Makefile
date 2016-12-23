@@ -41,7 +41,8 @@ SOURCES		:=	src \
 DATA		:=
 
 INCLUDES	:=  src \
-				ext/UDynLoad/api
+				ext/UDynLoad/api \
+				../api
 
 #---------------------------------------------------------------------------------
 # options for code generation

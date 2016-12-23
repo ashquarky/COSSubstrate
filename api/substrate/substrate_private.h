@@ -1,6 +1,6 @@
 /*	Cafe OS Substrate
 
-	main.c - Main Substrate logic.
+	substrate_private.h - Private Substrate API header. See below for details.
 	No partner file.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
@@ -23,22 +23,20 @@
 	THE SOFTWARE.
 */
 
-#include <substrate/substrate.h>
+/*	This file contains internal Substrate functions for many, many things.
+	It's used almost exclusivley by the Installer, but I've left it accessible
+	so you can hack away at everything from a module.
 
-int testSubroutine() {
-	return 0x69690000;
-}
-
-int _start() {
-	return testSubroutine() | 0x6969;
-}
-
-/*	Takes in data from the Installer and arranges it in memory.
-	This minimizes updates to the Installer.
+	Even so, remember that you really shouldn't be using any of these in
+	production. If you want some nifty feature, you're better off asking me
+	to add it / PRing the main Substrate repo than bodging it in.
 */
-void private_doSetup(void* substrate, void* substrateDynamic, void* OSDynLoad_Acquire, void* OSDynLoad_FindExport) {
-	COSS_SPECIFICS->substrate = substrate;
-	COSS_SPECIFICS->substrateDynamic = substrateDynamic;
-	COSS_SPECIFICS->OSDynLoad_Acquire = OSDynLoad_Acquire;
-	COSS_SPECIFICS->OSDynLoad_FindExport = OSDynLoad_FindExport;
-}
+
+#ifndef _COS_SUBSTRATE_PRIVATE_H_
+#define _COS_SUBSTRATE_PRIVATE_H_
+
+void (*private_doSetup)(void* substrate, void* substrateDynamic, void* OSDynLoad_Acquire, void* OSDynLoad_FindExport);
+
+int (*_start)();
+
+#endif //_COS_SUBSTRATE_PRIVATE_H_

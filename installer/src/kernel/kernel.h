@@ -60,11 +60,9 @@ extern void old_kern_write(const void* addr, unsigned int val);
 /*	Kernelmode code to set Block Address Translation (BAT) registers.
 	This essentially maps memory for us.
 	See bat.S for the mapping table.
+	ANY CHANGES MUST BE REFLECTED IN THE SUBSTRATE API HEADER
 */
 extern _kernelmode_ void SetupBATs();
-
-#define COSS_MEM_BASE 0x60000000
-#define COSS_MEM_SIZE 0x00800000
 
 /*	Clears our mappings, returning the console to the way it was before.
 */
