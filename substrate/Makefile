@@ -31,7 +31,9 @@ ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPRO")
 endif
 
-export SOURCES	= src
+export SRC	= src
+export SOURCES	= src \
+				  src/patches
 export TARGET	= substrate.cosm
 export INCLUDES	= ../api
 export LIBDIRS	=
@@ -42,13 +44,16 @@ export PATH		:=$(DEVKITPPC)/bin:$(PATH)
 
 export PREFIX	= powerpc-eabi-
 export CC		= $(PREFIX)gcc
+export AS		= $(PREFIX)gcc
 export LD		= $(PREFIX)ld
 
 export CFLAGS	= -c -fPIE
+export SFLAGS	= -c -fPIE
 export LDFLAGS	= -fPIE -shared
 
 export CFILES	= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
-export OFILES	= $(foreach cfl,$(CFILES),$(BUILD)/$(dir $(cfl))$(basename $(notdir $(cfl))).o)
+export SFILES	= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.S))
+export OFILES	= $(foreach cfl,$(CFILES) $(SFILES),$(BUILD)/$(dir $(cfl))$(basename $(notdir $(cfl))).o)
 export INCLUDE	= $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 				  $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
@@ -56,15 +61,19 @@ all: setup $(TARGET)
 
 setup:
 	@echo Compiling...
-	@mkdir -p $(BUILD)/$(SOURCES)
+	@mkdir -p $(foreach dir,$(SOURCES),$(BUILD)/$(dir))
 
 $(TARGET): $(OFILES)
 	@echo Linking $(TARGET)...
 	@$(LD) $(LDFLAGS) -o $@ $(OFILES)
 
-$(OFILES): $(CFILES)
+$(BUILD)/$(SRC)/%.o: $(SRC)/%.c
 	@echo Compiling $<...
 	@$(CC) $(CFLAGS) $(INCLUDE) -o $@ $<
+
+$(BUILD)/$(SRC)/%.o: $(SRC)/%.S
+	@echo Assembling $<...
+	@$(AS) $(SFLAGS) $(INCLUDE) -o $@ $<
 
 clean:
 	rm -rdf $(BUILD)
