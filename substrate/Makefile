@@ -35,7 +35,7 @@ export SRC	= src
 export SOURCES	= src \
 				  src/patches
 export TARGET	= substrate.cosm
-export INCLUDES	= ../api
+export INCLUDES	= ../api src/ext
 export LIBDIRS	=
 
 export BUILD	= build
