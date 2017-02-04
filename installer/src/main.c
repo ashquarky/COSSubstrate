@@ -153,6 +153,7 @@ int Menu_Main() {
 	/* Free the temporary file storage */
 	MEMFreeToExpHeap(coss_heap, substrate_tmp);
 
+	/* Apply everyone's favorite - ELF relocations! */
 	relocateElf(substrate, dynamic);
 
 	/* Flush everything to main memory and invalidate the instruction cache */
@@ -194,12 +195,16 @@ void relocateElf(void* elf, void* dynamic) {
 	Elf32_Sym* sym = 0;
 	unsigned int rela_sz = 0;
 
+	/* Go find .dynamic, .rela.dyn and a symbol table */
 	for (int i = 0; dynamic_r[i].d_tag != DT_NULL; i++) {
 		if (dynamic_r[i].d_tag == DT_RELA) {
+			/* relocation table */
 			rela = (Elf32_Rela*)(dynamic_r[i].d_un.d_ptr + elf);
 		} else if (dynamic_r[i].d_tag == DT_RELASZ) {
+			/* relocation table size */
 			rela_sz = (unsigned int)dynamic_r[i].d_un.d_val;
 		} else if (dynamic_r[i].d_tag == DT_SYMTAB) {
+			/* symbol table */
 			sym = (Elf32_Sym*)(dynamic_r[i].d_un.d_ptr + elf);
 		}
 
@@ -207,21 +212,27 @@ void relocateElf(void* elf, void* dynamic) {
 	}
 
 	log_printf("rela: 0x%08X rela_sz: %d sym: 0x%08X\n", rela, rela_sz, sym);
+	/* rela_sz is in bytes, divide out for proper indexing */
 	rela_sz /= sizeof(Elf32_Rela); //TODO bitshift this for speed
 
+	/* For each relocation... */
 	for (unsigned int i = 0; i < rela_sz; i++) {
+		/* See http://refspecs.linuxbase.org/elf/elfspec_ppc.pdf for info on each relocation. */
 		switch (ELF32_R_TYPE(rela[i].r_info)) {
 			case R_PPC_RELATIVE: {
+				/* R_PPC_RELATIVE: Change (offset) to (base address) + (addend). */
 				*((unsigned int*)(elf + rela[i].r_offset)) = (unsigned int)elf + rela[i].r_addend;
 				break;
 			}
 			case R_PPC_ADDR32: {
+				/* R_PPC_ADDR32: Change (offset) to (address of symbol at index ELF32_R_SYM(rela[i].r_info)) + (addend) */
 				*((unsigned int*)(elf + rela[i].r_offset)) = (unsigned int)(elf + sym[ELF32_R_SYM(rela[i].r_info)].st_value + rela[i].r_addend);
 				break;
 			}
 			case R_PPC_JMP_SLOT: {
+				/* R_PPC_JMP_SLOT: Change (offset) to a branch instruction going to (address of symbol at index ELF32_R_SYM(rela[i].r_info)) + (offset) */
 				//TODO handle jumps outside the usual 8MB
-				*((unsigned int*)(elf + rela[i].r_offset)) = makeB(elf + sym[ELF32_R_SYM(rela[i].r_info)].st_value, elf + rela[i].r_offset);
+				*((unsigned int*)(elf + rela[i].r_offset)) = makeB(elf + sym[ELF32_R_SYM(rela[i].r_info)].st_value + rela[i].r_addend, elf + rela[i].r_offset);
 				break;
 			}
 			default: {
