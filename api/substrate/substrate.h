@@ -36,6 +36,8 @@
 #define COSS_API_MINOR 0
 #define COSS_API_PATCH 1
 
+#ifndef __ASSEMBLY //kinda like __CPLUSPLUS but for assembly
+
 typedef struct _COSSubstrate_Specifics {
 	/* Used for dynamic linking */
 	void* substrate;
@@ -46,13 +48,15 @@ typedef struct _COSSubstrate_Specifics {
 	int (*OSDynLoad_FindExport)(unsigned int handle, int isdata, const char* symbol, void* address);
 } COSSubstrate_Specifics;
 
+#endif //__ASSEMBLY
+
 #define COSS_MEM_BASE (void*)0x60000000
 #define COSS_MEM_SIZE 0x00800000
 
 #define COSS_MAIN_HEAP_OFFSET +0x200
 #define COSS_MAIN_HEAP_SIZE_OFFSET -0x200
 
-#define COSS_MAIN_HEAP (void*)(COSS_MEM_BASE COSS_MAIN_HEAP_OFFSET)
+#define COSS_MAIN_HEAP (int)(COSS_MEM_BASE COSS_MAIN_HEAP_OFFSET)
 #define COSS_MAIN_HEAP_SIZE (COSS_MEM_SIZE COSS_MAIN_HEAP_SIZE_OFFSET)
 
 #define COSS_SPECIFICS ((COSSubstrate_Specifics*)COSS_MEM_BASE)

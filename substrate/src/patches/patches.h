@@ -1,7 +1,7 @@
 /*	Cafe OS Substrate
 
-	main.c - Main Substrate logic.
-	No partner file.
+	patches.h - Exposes Assembly patches to patcher.c.
+	Paired with main_patch.S and patch_handler.S.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
 
@@ -23,24 +23,21 @@
 	THE SOFTWARE.
 */
 
-#include "dynamic_libs/os_functions.h"
-#include <substrate/substrate.h>
+#ifndef _PATCHES_H_
+#define _PATCHES_H_
 
-int testSubroutine() {
-	return 0x69690000;
-}
+//main_patch.S
 
-int _start() {
-	return testSubroutine() | 0x6969;
-}
+void main_patch();
 
-/*	Takes in data from the Installer and arranges it in memory.
-	This minimizes updates to the Installer.
-*/
-void private_doSetup(void* substrate, void* substrateDynamic, void* OSDynLoad_Acquire, void* OSDynLoad_FindExport) {
-	COSS_SPECIFICS->substrate = substrate;
-	COSS_SPECIFICS->substrateDynamic = substrateDynamic;
-	COSS_SPECIFICS->OSDynLoad_Acquire = OSDynLoad_Acquire;
-	COSS_SPECIFICS->OSDynLoad_FindExport = OSDynLoad_FindExport;
-	InitOSFunctionPointers();
-}
+#define MAIN_PATCH_SIZE 0x4 * 5 /* 4 bytes to an instruction, 5 instructions */
+#define MAIN_PATCH_INSTR_PATCH_LIS 0 /* Patch first instruction */
+#define MAIN_PATCH_INSTR_PATCH_LIS_MASK 0x0000FFFF
+#define MAIN_PATCH_INSTR_PATCH_ORI 1
+#define MAIN_PATCH_INSTR_PATCH_ORI_MASK 0x0000FFFF
+
+//patch_handler.S
+
+void PatchHandler(int r3, int r4, int r5, int r6, int r7, int r8, int r9, int r10, int r11, int r12);
+
+#endif //_PATCHES_H_

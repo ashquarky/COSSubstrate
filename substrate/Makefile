@@ -33,14 +33,16 @@ endif
 
 export SRC	= src
 export SOURCES	= src \
-				  src/patches
+				  src/patches \
+				  src/dynamic_libs
 export TARGET	= substrate.cosm
-export INCLUDES	= ../api src/ext
-export LIBDIRS	=
+export INCLUDES	= ../api src/ext src
+export LIBDIRS	= $(DEVKITPRO)/libogc
 
 export BUILD	= build
 
-export PATH		:=$(DEVKITPPC)/bin:$(PATH)
+export PATH		:= $(DEVKITPPC)/bin:$(PATH)
+export INCLUDES	:= $(INCLUDES)
 
 export PREFIX	= powerpc-eabi-
 export CC		= $(PREFIX)gcc

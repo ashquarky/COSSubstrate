@@ -1,7 +1,7 @@
-/*	Cafe OS Substrate
+/*	Cafe OS Substrate Installer
 
-	main.c - Main Substrate logic.
-	No partner file.
+	main_patch.S - Patch to be applied at the start of an injected function.
+	Paired with patches.h.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
 
@@ -23,24 +23,12 @@
 	THE SOFTWARE.
 */
 
-#include "dynamic_libs/os_functions.h"
-#include <substrate/substrate.h>
+#include "ppc_asm.h"
 
-int testSubroutine() {
-	return 0x69690000;
-}
-
-int _start() {
-	return testSubroutine() | 0x6969;
-}
-
-/*	Takes in data from the Installer and arranges it in memory.
-	This minimizes updates to the Installer.
-*/
-void private_doSetup(void* substrate, void* substrateDynamic, void* OSDynLoad_Acquire, void* OSDynLoad_FindExport) {
-	COSS_SPECIFICS->substrate = substrate;
-	COSS_SPECIFICS->substrateDynamic = substrateDynamic;
-	COSS_SPECIFICS->OSDynLoad_Acquire = OSDynLoad_Acquire;
-	COSS_SPECIFICS->OSDynLoad_FindExport = OSDynLoad_FindExport;
-	InitOSFunctionPointers();
-}
+.globl main_patch
+main_patch:
+	lis r2, 0
+	ori r2, r2, 0
+	mtctr r2
+	mflr r2
+	bctrl

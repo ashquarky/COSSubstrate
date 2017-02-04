@@ -42,6 +42,8 @@
 #include <UDynLoad.h>
 #include <elf_abi.h>
 
+void relocateElf(void* elf, void* dynamic);
+
 /*
 */
 int Menu_Main() {
@@ -71,7 +73,7 @@ int Menu_Main() {
 		This is the heap that will be used for basically everything.
 	*/
 	memset((void*)COSS_MEM_BASE, 0, COSS_MEM_SIZE);
-	int coss_heap = MEMCreateExpHeapEx(COSS_MAIN_HEAP, COSS_MAIN_HEAP_SIZE, 0);
+	int coss_heap = MEMCreateExpHeapEx((void*)COSS_MAIN_HEAP, COSS_MAIN_HEAP_SIZE, 0);
 
 	/*	Load Substrate from SD */
 	FILE* substrate_file = fopen("sd:/substrate.cosm", "rb"); //TODO change path
@@ -151,6 +153,8 @@ int Menu_Main() {
 	/* Free the temporary file storage */
 	MEMFreeToExpHeap(coss_heap, substrate_tmp);
 
+	relocateElf(substrate, dynamic);
+
 	/* Flush everything to main memory and invalidate the instruction cache */
 	DCFlushRange(substrate, substrate_size);
 	ICInvalidateRange(substrate, substrate_size);
@@ -178,4 +182,52 @@ quit:
 	log_deinit();
 
 	return EXIT_SUCCESS;
+}
+
+unsigned int makeB(void* dst, void* src) {
+	return (unsigned int)(((dst - src) & 0x03FFFFFC) | 0x48000000);
+}
+
+void relocateElf(void* elf, void* dynamic) {
+	Elf32_Dyn* dynamic_r = (Elf32_Dyn*)dynamic;
+	Elf32_Rela* rela = 0;
+	Elf32_Sym* sym = 0;
+	unsigned int rela_sz = 0;
+
+	for (int i = 0; dynamic_r[i].d_tag != DT_NULL; i++) {
+		if (dynamic_r[i].d_tag == DT_RELA) {
+			rela = (Elf32_Rela*)(dynamic_r[i].d_un.d_ptr + elf);
+		} else if (dynamic_r[i].d_tag == DT_RELASZ) {
+			rela_sz = (unsigned int)dynamic_r[i].d_un.d_val;
+		} else if (dynamic_r[i].d_tag == DT_SYMTAB) {
+			sym = (Elf32_Sym*)(dynamic_r[i].d_un.d_ptr + elf);
+		}
+
+		if (rela && rela_sz && sym) break;
+	}
+
+	log_printf("rela: 0x%08X rela_sz: %d sym: 0x%08X\n", rela, rela_sz, sym);
+	rela_sz /= sizeof(Elf32_Rela); //TODO bitshift this for speed
+
+	for (unsigned int i = 0; i < rela_sz; i++) {
+		switch (ELF32_R_TYPE(rela[i].r_info)) {
+			case R_PPC_RELATIVE: {
+				*((unsigned int*)(elf + rela[i].r_offset)) = (unsigned int)elf + rela[i].r_addend;
+				break;
+			}
+			case R_PPC_ADDR32: {
+				*((unsigned int*)(elf + rela[i].r_offset)) = (unsigned int)(elf + sym[ELF32_R_SYM(rela[i].r_info)].st_value + rela[i].r_addend);
+				break;
+			}
+			case R_PPC_JMP_SLOT: {
+				//TODO handle jumps outside the usual 8MB
+				*((unsigned int*)(elf + rela[i].r_offset)) = makeB(elf + sym[ELF32_R_SYM(rela[i].r_info)].st_value, elf + rela[i].r_offset);
+				break;
+			}
+			default: {
+				log_printf("Unknown relocation type %d!\n", ELF32_R_TYPE(rela[i].r_info));
+				break;
+			}
+		}
+	}
 }
