@@ -35,6 +35,7 @@
 #include "utils/exception.h"
 
 #include "kernel/kernel.h"
+#include "system/plt_resolve.h"
 
 #include <substrate/substrate.h> /* /api/substrate/substrate.h */
 #include <substrate/substrate_private.h>
@@ -43,6 +44,10 @@
 #include <elf_abi.h>
 
 void relocateElf(void* elf, void* dynamic);
+
+void callback(COSSubstrate_FunctionContext* ctx) {
+	log_printf("\n\nCallback! 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n\n", ctx->args[0], ctx->args[1], ctx->args[2], ctx->args[3], ctx->args[4]);
+}
 
 /*
 */
@@ -56,7 +61,7 @@ int Menu_Main() {
 	/*	Allows me to be lazy and use C FILE functions. */
 	mount_sd_fat("sd"); /* fs/sd_fat_devoptab.h */
 
-	log_init("192.168.192.36"); /* log_ functions in utils/logger.h */
+	log_init("192.168.192.37"); /* log_ functions in utils/logger.h */
 	log_print("Hello World!\n");
 
 	/* 	Install my improved kern_read/write.
@@ -86,11 +91,10 @@ int Menu_Main() {
 	/*	Allocate temporary Substrate location.
 		This will be where the raw ELF is kept so we can do ELF loadery things.
 	*/
-	void* substrate_tmp = MEMAllocFromExpHeapEx(coss_heap, substrate_file_size, 0x10); //TODO try and allocate at end of heap
-	log_printf("Substrate allocated at 0x%08X\n", substrate_tmp);
+	void* substrate_tmp = MEMAllocFromExpHeapEx(coss_heap, substrate_file_size, 0x4); //TODO try and allocate at end of heap
 	if (!substrate_tmp) goto quit;
 	fread(substrate_tmp, substrate_file_size, 1, substrate_file);
-	log_printf("Read in Substrate! ELF magic: 0x%02X %c%c%c\n", ((char*)substrate_tmp)[0], ((char*)substrate_tmp)[1], ((char*)substrate_tmp)[2], ((char*)substrate_tmp)[3]);
+	log_printf("Read in Substrate! Allocated at 0x%08X.\n", substrate_tmp);
 
 	/* Check Substrate validity */
 	int res = UDynLoad_CheckELF(substrate_tmp);
@@ -101,7 +105,6 @@ int Menu_Main() {
 
 	/* Get a pointer to the Substrate's program header table */
 	Elf32_Phdr* substrate_phdrs = ((Elf32_Ehdr*)substrate_tmp)->e_phoff + substrate_tmp;
-	log_printf("Substrate program header table at 0x%08X\n", substrate_phdrs);
 
 	/*	Try to calculate how much memory we'll need.
 		This could take some serious love from someone who knows
@@ -128,10 +131,8 @@ int Menu_Main() {
 		}
 	}
 
-	log_printf("Size of loaded application: 0x%08X\n", substrate_size);
-
 	/* Allocate space for the actual Substrate */
-	void* substrate = MEMAllocFromExpHeapEx(coss_heap, substrate_size, 0x10);
+	void* substrate = MEMAllocFromExpHeapEx(coss_heap, substrate_size, 0x4);
 	memset(substrate, 0, substrate_size);
 
 	void* dynamic = 0;
@@ -148,7 +149,7 @@ int Menu_Main() {
 		}
 	}
 
-	log_printf("Substrate loaded into 0x%08X\n", substrate);
+	log_printf("Substrate loaded into 0x%08X\n\nRelocating...\n", substrate);
 
 	/* Free the temporary file storage */
 	MEMFreeToExpHeap(coss_heap, substrate_tmp);
@@ -163,16 +164,34 @@ int Menu_Main() {
 	/* Testing code from here on out */
 	/*	Since we've followed the program headers, we have to use
 		FindExportDynamic to get the function. The normal FindExport uses
-		.symtab and .strtab, which didn't make it past the loading phase. */
+		.symtab and .strtab, which didn't make it past the loading phase.
+	*/
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "_start", (void**)&_start);
-	log_printf("FindExport: 0x%08X, %d\n", _start, res);
 	res = _start();
-	log_printf("_start: 0x%08X\n", res);
+	log_printf("\n_start: 0x%08X\n", res);
 
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "private_doSetup", (void**)&private_doSetup);
-	log_printf("FindExport: 0x%08X, %d\n", private_doSetup, res);
 	private_doSetup(substrate, dynamic, OSDynLoad_Acquire, OSDynLoad_FindExport);
 	log_printf("Did setup! substrate: 0x%08X\n", COSS_SPECIFICS->substrate);
+
+	void (*COSSubstrate_PatchFunc)(void* func);
+	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_PatchFunc", (void**)&COSSubstrate_PatchFunc);
+
+	UDynLoad_FindExportDynamic(substrate, dynamic, "debug_setCallback", (void**)&debug_setCallback);
+
+	debug_setCallback(&callback);
+
+	unsigned int* t = (unsigned int*)&ALongRoutine;
+	log_printf("pre-patch ALongRoutine: %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
+	COSSubstrate_PatchFunc(&ALongRoutine);
+	log_printf("ALongRoutine = patched! %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
+
+	DCFlushRange((&ALongRoutine - 0x100), 0x200);
+	ICInvalidateRange((&ALongRoutine - 0x100), 0x200);
+
+	int x = ALongRoutine(1, 2);
+
+	log_printf("ALongRoutine returned: 0x%08X\n", x);
 quit:
 	fclose(substrate_file);
 
@@ -189,13 +208,22 @@ unsigned int makeB(void* dst, void* src) {
 	return (unsigned int)(((dst - src) & 0x03FFFFFC) | 0x48000000);
 }
 
+unsigned int makeLiR0(unsigned short val) {
+	return (unsigned int)(0x38000000 | val);
+}
+
+/*	Relocates an elf. This took FOREVER to write.
+	TODO move into dedicated file.
+*/
 void relocateElf(void* elf, void* dynamic) {
 	Elf32_Dyn* dynamic_r = (Elf32_Dyn*)dynamic;
 	Elf32_Rela* rela = 0;
 	Elf32_Sym* sym = 0;
 	unsigned int rela_sz = 0;
+	unsigned int jmprel_sz = 0;
+	unsigned int* plt = 0;
 
-	/* Go find .dynamic, .rela.dyn and a symbol table */
+	/* Go find .dynamic, .rela.dyn, .rela.plt, .plt and a symbol table */
 	for (int i = 0; dynamic_r[i].d_tag != DT_NULL; i++) {
 		if (dynamic_r[i].d_tag == DT_RELA) {
 			/* relocation table */
@@ -206,12 +234,39 @@ void relocateElf(void* elf, void* dynamic) {
 		} else if (dynamic_r[i].d_tag == DT_SYMTAB) {
 			/* symbol table */
 			sym = (Elf32_Sym*)(dynamic_r[i].d_un.d_ptr + elf);
+		} else if (dynamic_r[i].d_tag == DT_PLTGOT) {
+			plt = (unsigned int*)(dynamic_r[i].d_un.d_ptr + elf);
+		} else if (dynamic_r[i].d_tag == DT_PLTRELSZ) {
+			jmprel_sz = (unsigned int)dynamic_r[i].d_un.d_val;
 		}
 
-		if (rela && rela_sz && sym) break;
+		if (rela && rela_sz && sym && plt && jmprel_sz) break;
 	}
 
-	log_printf("rela: 0x%08X rela_sz: %d sym: 0x%08X\n", rela, rela_sz, sym);
+	/* Get needed info about the PLT */
+	unsigned int plt_otable = (unsigned int)plt + 0x48; //Constant 0x48 bytes at start of PLT
+	for (unsigned int i = 0; i < (jmprel_sz / sizeof(Elf32_Rela)); i++) {
+		plt_otable += 8; //two instructions
+	}
+	/* Set up PLT patches... yay... */
+	((unsigned int*)&plt_resolve)[2] |= (unsigned short)(((unsigned int)((unsigned int)plt + (PLT_TABLE_ADDR_INDEX * 4)) >> 16) & 0xFFFF);
+	((unsigned int*)&plt_resolve)[3] |= (unsigned short)((unsigned int)((unsigned int)plt + (PLT_TABLE_ADDR_INDEX * 4)) & 0xFFFF);
+	memcpy(plt, &plt_resolve, PLT_RESOLVE_SIZE);
+	plt[PLT_TABLE_ADDR_INDEX] = (unsigned int)plt_otable;
+	unsigned short cur_table_offset = 0;
+
+	/* 	Staggering hack; relocations with .text as a symbol seem to not work properly.
+		Thus, I need to know the address of .text before relocating.
+		Should be the second symbol; loop up to 10 just in case.
+	*/
+	unsigned int text_addr = 0;
+	for (int i = 0; i < 10; i++) {
+		if (ELF32_ST_TYPE(sym[i].st_info) == STT_SECTION) {
+			text_addr = sym[i].st_value;
+		}
+	}
+	#define IF_NOT_TEXT(x) ((x == text_addr) ? 0 : x)
+
 	/* rela_sz is in bytes, divide out for proper indexing */
 	rela_sz /= sizeof(Elf32_Rela); //TODO bitshift this for speed
 
@@ -226,13 +281,45 @@ void relocateElf(void* elf, void* dynamic) {
 			}
 			case R_PPC_ADDR32: {
 				/* R_PPC_ADDR32: Change (offset) to (address of symbol at index ELF32_R_SYM(rela[i].r_info)) + (addend) */
-				*((unsigned int*)(elf + rela[i].r_offset)) = (unsigned int)(elf + sym[ELF32_R_SYM(rela[i].r_info)].st_value + rela[i].r_addend);
+				*((unsigned int*)(elf + rela[i].r_offset)) = (unsigned int)(elf + IF_NOT_TEXT(sym[ELF32_R_SYM(rela[i].r_info)].st_value) + rela[i].r_addend);
 				break;
 			}
 			case R_PPC_JMP_SLOT: {
 				/* R_PPC_JMP_SLOT: Change (offset) to a branch instruction going to (address of symbol at index ELF32_R_SYM(rela[i].r_info)) + (offset) */
-				//TODO handle jumps outside the usual 8MB
-				*((unsigned int*)(elf + rela[i].r_offset)) = makeB(elf + sym[ELF32_R_SYM(rela[i].r_info)].st_value + rela[i].r_addend, elf + rela[i].r_offset);
+				//TODO handle func/notype jumps outside the usual 8MB
+				if (ELF32_ST_TYPE(sym[ELF32_R_SYM(rela[i].r_info)].st_info) == STT_FUNC || ELF32_ST_TYPE(sym[ELF32_R_SYM(rela[i].r_info)].st_info) == STT_NOTYPE) {
+					*((unsigned int*)(elf + rela[i].r_offset)) = makeB(elf + IF_NOT_TEXT(sym[ELF32_R_SYM(rela[i].r_info)].st_value) + rela[i].r_addend, elf + rela[i].r_offset);
+				} else if (ELF32_ST_TYPE(sym[ELF32_R_SYM(rela[i].r_info)].st_info) == STT_OBJECT) {
+					/* Function pointer, woo-hoo? */
+					((unsigned int*)(elf + rela[i].r_offset))[0] = makeLiR0(cur_table_offset);
+					((unsigned int*)(elf + rela[i].r_offset))[1] = makeB(plt, elf + rela[i].r_offset);
+					*((unsigned int*)(plt_otable + cur_table_offset)) = (unsigned int)(elf + IF_NOT_TEXT(sym[ELF32_R_SYM(rela[i].r_info)].st_value) + rela[i].r_addend);
+					cur_table_offset += 4;
+				}
+				break;
+			}
+			case R_PPC_ADDR16_LO: {
+				*((unsigned short*)(elf + rela[i].r_offset)) = (unsigned short)((unsigned int)(elf + IF_NOT_TEXT(sym[ELF32_R_SYM(rela[i].r_info)].st_value) + rela[i].r_addend) & 0xFFFF);
+				break;
+			}
+			case R_PPC_ADDR16_HA: {
+				//This doesn't seem to work quite right, despite using code straight from the ABI docs
+				unsigned int x = (unsigned int)(elf + IF_NOT_TEXT(sym[ELF32_R_SYM(rela[i].r_info)].st_value) + rela[i].r_addend);
+				*((unsigned short*)(elf + rela[i].r_offset)) = (unsigned short)(((x >> 16) + ((x & 0x8000) ? 1 : 0)) & 0xFFFF);
+				break;
+			}
+			case R_PPC_ADDR16_HI: {
+				*((unsigned short*)(elf + rela[i].r_offset)) = (unsigned short)(((unsigned int)(elf + IF_NOT_TEXT(sym[ELF32_R_SYM(rela[i].r_info)].st_value) + rela[i].r_addend) & 0xFFFF0000) >> 16);
+				break;
+			}
+			case R_PPC_REL24: {
+				unsigned int value = (unsigned int)((IF_NOT_TEXT(sym[ELF32_R_SYM(rela[i].r_info)].st_value) + rela[i].r_addend) - rela[i].r_offset);
+				if ((value & 0xFC000000) && !(value & 0x80000000)) {
+					log_printf("R_PPC_REL24 relocation number %d out of range: 0x%08X (target: 0x%08X)\n", i, value, rela[i].r_offset);
+					break;
+				}
+				*((unsigned int*)(elf + rela[i].r_offset)) &= 0xFC000003;
+				*((unsigned int*)(elf + rela[i].r_offset)) |= (unsigned int)(value & 0x03FFFFFC);
 				break;
 			}
 			default: {

@@ -1,7 +1,7 @@
 /*	Cafe OS Substrate
 
 	patches.h - Exposes Assembly patches to patcher.c.
-	Paired with main_patch.S and patch_handler.S.
+	Paired with main_patch.S, patcher.c and patch_handler.S.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
 
@@ -26,10 +26,16 @@
 #ifndef _PATCHES_H_
 #define _PATCHES_H_
 
+//patcher.c
+
+
+
 //main_patch.S
-
+#ifndef __ASSEMBLY
 void main_patch();
+#endif //__ASSEMBLY
 
+#define MAIN_PATCH main_patch
 #define MAIN_PATCH_SIZE 0x4 * 5 /* 4 bytes to an instruction, 5 instructions */
 #define MAIN_PATCH_INSTR_PATCH_LIS 0 /* Patch first instruction */
 #define MAIN_PATCH_INSTR_PATCH_LIS_MASK 0x0000FFFF
@@ -38,6 +44,12 @@ void main_patch();
 
 //patch_handler.S
 
+#ifndef __ASSEMBLY
 void PatchHandler(int r3, int r4, int r5, int r6, int r7, int r8, int r9, int r10, int r11, int r12);
+void bctr();
+void mtctr_r2();
+#endif //__ASSEMBLY
+
+#define PATCH_HANDLER PatchHandler
 
 #endif //_PATCHES_H_

@@ -48,6 +48,12 @@ typedef struct _COSSubstrate_Specifics {
 	int (*OSDynLoad_FindExport)(unsigned int handle, int isdata, const char* symbol, void* address);
 } COSSubstrate_Specifics;
 
+typedef struct _COSSubstrate_FunctionContext {
+	void* source;
+	unsigned int args[10];
+	void* str;
+} COSSubstrate_FunctionContext;
+
 #endif //__ASSEMBLY
 
 #define COSS_MEM_BASE (void*)0x60000000
@@ -60,5 +66,7 @@ typedef struct _COSSubstrate_Specifics {
 #define COSS_MAIN_HEAP_SIZE (COSS_MEM_SIZE COSS_MAIN_HEAP_SIZE_OFFSET)
 
 #define COSS_SPECIFICS ((COSSubstrate_Specifics*)COSS_MEM_BASE)
+
+//void (*COSSubstrate_PatchFunc)(void* func);
 
 #endif //_COS_SUBSTRATE_H_

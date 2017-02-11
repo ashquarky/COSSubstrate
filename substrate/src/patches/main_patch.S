@@ -25,10 +25,17 @@
 
 #include "ppc_asm.h"
 
+#define __ASSEMBLY
+#include "patches.h"
+#undef __ASSEMBLY
+
+.section ".text"
+.align 4
+
 .globl main_patch
 main_patch:
-	lis r2, 0
-	ori r2, r2, 0
+	lis r2, PATCH_HANDLER@h
+	ori r2, r2, PATCH_HANDLER@l
 	mtctr r2
 	mflr r2
 	bctrl

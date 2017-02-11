@@ -158,3 +158,15 @@ old_kern_write:
 	mtlr r0
 
 	blr
+
+
+.globl ALongRoutine
+ALongRoutine:
+	mr r9, r3
+	nop
+	mr r10, r4
+	nop
+	add r5, r9, r10
+	ori r5, r5, 0xDEAD
+	mr r3, r5
+	blr

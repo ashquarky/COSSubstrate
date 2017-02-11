@@ -68,4 +68,6 @@ extern _kernelmode_ void SetupBATs();
 */
 extern _kernelmode_ void ClearBATs();
 
+
+extern int ALongRoutine(int a, int b);
 #endif //KERNEL_H

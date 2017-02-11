@@ -23,6 +23,7 @@
 	THE SOFTWARE.
 */
 
+#include "patches/patches.h"
 #include "dynamic_libs/os_functions.h"
 #include <substrate/substrate.h>
 

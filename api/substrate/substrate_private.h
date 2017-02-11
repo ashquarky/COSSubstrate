@@ -39,4 +39,6 @@ void (*private_doSetup)(void* substrate, void* substrateDynamic, void* OSDynLoad
 
 int (*_start)();
 
+void (*debug_setCallback)(void(*func)(COSSubstrate_FunctionContext* ctx));
+
 #endif //_COS_SUBSTRATE_PRIVATE_H_

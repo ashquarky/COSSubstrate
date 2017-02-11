@@ -34,7 +34,9 @@ endif
 export SRC	= src
 export SOURCES	= src \
 				  src/patches \
-				  src/dynamic_libs
+				  src/dynamic_libs \
+				  src/kernel \
+				  src/utils
 export TARGET	= substrate.cosm
 export INCLUDES	= ../api src/ext src
 export LIBDIRS	= $(DEVKITPRO)/libogc
@@ -49,9 +51,9 @@ export CC		= $(PREFIX)gcc
 export AS		= $(PREFIX)gcc
 export LD		= $(PREFIX)ld
 
-export CFLAGS	= -c -fPIE
+export CFLAGS	= -c -fPIE -fno-builtin
 export SFLAGS	= -c -fPIE
-export LDFLAGS	= -fPIE -shared
+export LDFLAGS	= -fPIE -shared --unresolved-symbols=report-all #BYO memcpy
 
 export CFILES	= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
 export SFILES	= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.S))

@@ -29,22 +29,70 @@
 #include <substrate/substrate.h>
 #undef __ASSEMBLY
 
-//TODO fload support
+.section ".text"
+.align 4
+
+/*	Main patch handler. All patched functions redirect here.
+	Saves all registers and branches out to our C functions to generate contexts
+	and dispatch the callbacks.
+*/
 .globl PatchHandler
 PatchHandler:
 	mflr r0
 	stw r0, 8(r1)
+	//r1 = 105DC1B0
+	//lr = 00807EB0
 	stwu r1, -16(r1)
 
-	mr r31, r3
-	mr r30, r4
-	mr r29, r5
-	mr r28, r6
-	mr r27, r7
-	mr r26, r8
-	mr r25, r9
-	mr r24, r10
-	mr r23, r11
-	mr r24, r12
+	/*	main_patch sticks the original LR in r2
 
-	blr
+		TODO this stores data from (-128 + r1) to (-8 + r1); yes?
+		How fast is this? Is it better to store each register individually (r2-r13)?
+	*/
+	stmw r2, -128(r1)
+
+	//Instruction right after main_patch
+	mr r4, r0
+	//r1 = 105DC1A0
+	subi r1, r1, 124 //I heard you liked magic numbers
+	//"pointer to registers" yeah let's go with that
+	mr r3, r1
+	subi r1, r1, 32 //Leave some breathing room
+
+	bl private_generateFunctionContext
+	bl private_dispatchCallbacksAndGetInstrunctions
+	mr r0, r3
+	//Instructions to execute are in r0
+
+	/* TODO update registers based on callbacks */
+	//r1 = 105DC108
+	//Reset stack and reload registers
+	addi r1, r1, 156 //124+32
+	//r1 = 105DC1A0
+	lmw r2, -128(r1)
+	addi r1, r1, 16 //further wondorous trial/error
+
+	//r2 has the original LR in it (thanks lmw!)
+	mtlr r2
+
+	/*	patcher.c sticks a "mtctr r2" in front of the original instructions
+		(along with a "bctr" at the end)
+
+		This instruction is usually lwz r0, 8(r1) for all you stack frame nerds
+	*/
+	//r1 = 0x105DC1B0
+	lwz r2, 8(r1)
+	//r2 = 0x00807EB0
+
+	//Address returned by private_dispatchCallbacksAndGetInstrunctions
+	mtctr r0
+	bctr
+
+//Just some randoms to help out PatchedFunction generation
+.globl bctr
+bctr:
+	bctr
+
+.globl mtctr_r2
+mtctr_r2:
+	mtctr r2
