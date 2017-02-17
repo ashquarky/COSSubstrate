@@ -39,21 +39,32 @@
 .globl PatchHandler
 PatchHandler:
 	mflr r0
-	stw r0, 8(r1)
-	//r1 = 105DC1B0
-	//lr = 00807EB0
+	/*	https://twitter.com/quarktheawesome/status/832508820605710336
+		https://twitter.com/quarktheawesome/status/832509144741531649
+		https://twitter.com/quarktheawesome/status/832516570412834816
+		https://twitter.com/quarktheawesome/status/832516809811128322
+		Thus, this is perfectly fine in my new calling convention, designed just
+		to deal with GCC's weirdness.
+	*/
+	stw r0, -8(r1)
 	stwu r1, -16(r1)
 
-	/*	main_patch sticks the original LR in r2
-
-		TODO this stores data from (-128 + r1) to (-8 + r1); yes?
-		How fast is this? Is it better to store each register individually (r2-r13)?
-	*/
-	stmw r2, -128(r1)
+	/* main_patch sticks the original LR in r2 */
+	stw r2, -0x80(r1)
+	stw r3, -0x7C(r1)
+	stw r4, -0x78(r1)
+	stw r5, -0x74(r1)
+	stw r6, -0x70(r1)
+	stw r7, -0x6C(r1)
+	stw r8, -0x68(r1)
+	stw r9, -0x64(r1)
+	stw r10, -0x60(r1)
+	stw r11, -0x5C(r1)
+	stw r12, -0x58(r1)
+	stw r13, -0x54(r1)
 
 	//Instruction right after main_patch
 	mr r4, r0
-	//r1 = 105DC1A0
 	subi r1, r1, 124 //I heard you liked magic numbers
 	//"pointer to registers" yeah let's go with that
 	mr r3, r1
@@ -64,15 +75,27 @@ PatchHandler:
 	mr r0, r3
 	//Instructions to execute are in r0
 
-	/* TODO update registers based on callbacks */
-	//r1 = 105DC108
-	//Reset stack and reload registers
+	/*	Reset stack and reload registers, which may or may not have been
+		modified by our callbacks
+	*/
 	addi r1, r1, 156 //124+32
-	//r1 = 105DC1A0
-	lmw r2, -128(r1)
+
+	lwz r2, -0x80(r1)
+	lwz r3, -0x7C(r1)
+	lwz r4, -0x78(r1)
+	lwz r5, -0x74(r1)
+	lwz r6, -0x70(r1)
+	lwz r7, -0x6C(r1)
+	lwz r8, -0x68(r1)
+	lwz r9, -0x64(r1)
+	lwz r10, -0x60(r1)
+	lwz r11, -0x5C(r1)
+	lwz r12, -0x58(r1)
+	lwz r13, -0x54(r1)
+
 	addi r1, r1, 16 //further wondorous trial/error
 
-	//r2 has the original LR in it (thanks lmw!)
+	//r2 has the original LR in it
 	mtlr r2
 
 	/*	patcher.c sticks a "mtctr r2" in front of the original instructions
@@ -80,9 +103,7 @@ PatchHandler:
 
 		This instruction is usually lwz r0, 8(r1) for all you stack frame nerds
 	*/
-	//r1 = 0x105DC1B0
-	lwz r2, 8(r1)
-	//r2 = 0x00807EB0
+	lwz r2, -8(r1)
 
 	//Address returned by private_dispatchCallbacksAndGetInstrunctions
 	mtctr r0

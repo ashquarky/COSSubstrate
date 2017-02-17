@@ -51,7 +51,7 @@ export CC		= $(PREFIX)gcc
 export AS		= $(PREFIX)gcc
 export LD		= $(PREFIX)ld
 
-export CFLAGS	= -c -fPIE -fno-builtin
+export CFLAGS	= -c -fPIE -fno-builtin -Wall
 export SFLAGS	= -c -fPIE
 export LDFLAGS	= -fPIE -shared --unresolved-symbols=report-all #BYO memcpy
 

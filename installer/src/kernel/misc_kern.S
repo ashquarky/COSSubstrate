@@ -167,6 +167,6 @@ ALongRoutine:
 	mr r10, r4
 	nop
 	add r5, r9, r10
-	ori r5, r5, 0xDEAD
+	addi r5, r5, 0x7ABC
 	mr r3, r5
 	blr

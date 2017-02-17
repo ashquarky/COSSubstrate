@@ -51,7 +51,11 @@ typedef struct _COSSubstrate_Specifics {
 typedef struct _COSSubstrate_FunctionContext {
 	void* source;
 	unsigned int args[10];
-	void* str;
+
+	/*	TODO: Consider renaming to mc_hammer
+		might get the point across better
+	*/
+	unsigned int substrate_internal;
 } COSSubstrate_FunctionContext;
 
 #endif //__ASSEMBLY

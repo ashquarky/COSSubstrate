@@ -45,8 +45,10 @@
 
 void relocateElf(void* elf, void* dynamic);
 
+#define PATCH_VAL 3
 void callback(COSSubstrate_FunctionContext* ctx) {
-	log_printf("\n\nCallback! 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n\n", ctx->args[0], ctx->args[1], ctx->args[2], ctx->args[3], ctx->args[4]);
+	ctx->args[0] = PATCH_VAL;
+	log_printf("\nCallback! 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n\n", ctx->args[0], ctx->args[1], ctx->args[2], ctx->args[3], ctx->args[4]);
 }
 
 /*
@@ -177,21 +179,36 @@ int Menu_Main() {
 	void (*COSSubstrate_PatchFunc)(void* func);
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_PatchFunc", (void**)&COSSubstrate_PatchFunc);
 
+	void (*COSSubstrate_RestoreFunc)(void* func);
+	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_RestoreFunc", (void**)&COSSubstrate_RestoreFunc);
+
 	UDynLoad_FindExportDynamic(substrate, dynamic, "debug_setCallback", (void**)&debug_setCallback);
 
 	debug_setCallback(&callback);
 
-	unsigned int* t = (unsigned int*)&ALongRoutine;
-	log_printf("pre-patch ALongRoutine: %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
-	COSSubstrate_PatchFunc(&ALongRoutine);
-	log_printf("ALongRoutine = patched! %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
+	#define FUNC_TO_TRY ALongRoutine(1, 2);
+	#define FUNC_TO_TRY_ADDR &ALongRoutine
+	#define FUNC_TO_TRY_STR "ALongRoutine"
 
-	DCFlushRange((&ALongRoutine - 0x100), 0x200);
-	ICInvalidateRange((&ALongRoutine - 0x100), 0x200);
+	unsigned int* t = (unsigned int*)FUNC_TO_TRY_ADDR;
+	log_printf("pre-patch " FUNC_TO_TRY_STR ": %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
+	COSSubstrate_PatchFunc(FUNC_TO_TRY_ADDR);
+	log_printf(FUNC_TO_TRY_STR " = patched! %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
 
-	int x = ALongRoutine(1, 2);
+	DCFlushRange((FUNC_TO_TRY_ADDR - 0x100), 0x200);
+	ICInvalidateRange((FUNC_TO_TRY_ADDR - 0x100), 0x200);
 
-	log_printf("ALongRoutine returned: 0x%08X\n", x);
+	int x = FUNC_TO_TRY;
+
+	log_printf(FUNC_TO_TRY_STR " returned: 0x%08X\n", x);
+
+	/* 	Funny story - if my Assembly properly followed calling convention, this
+		function pointer would take us halfway through FUNC_TO_TRY.
+
+		Good thing I stopped doing that.
+	*/
+	COSSubstrate_RestoreFunc(FUNC_TO_TRY_ADDR);
+	log_printf(FUNC_TO_TRY_STR " = restored! %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
 quit:
 	fclose(substrate_file);
 

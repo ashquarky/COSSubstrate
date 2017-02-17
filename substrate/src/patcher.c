@@ -23,13 +23,18 @@
 	THE SOFTWARE.
 */
 
+#include <stdlib.h>
+#include <string.h>
 #include "dynamic_libs/mem_functions.h"
+#include "dynamic_libs/os_functions.h"
+#include "kernel/kernel.h"
 #include "patches/patches.h"
 #include "utils/hash.h"
 
 #include <substrate/substrate.h>
 
 //But first... A hash table.
+//TODO Mutexes on the hash table? Maybe?
 
 typedef struct _COSSubstrate_PatchedFunction {
 	/* Make sure to keep this aligned to 0x4! */
@@ -88,7 +93,7 @@ COSSubstrate_PatchedFunction* private_lookupFromFunctionHashTable(unsigned int a
 */
 void COSSubstrate_PatchFunc(void* func) {
 	COSSubstrate_PatchedFunction* patch = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(COSSubstrate_PatchedFunction), 0x4);
-	patch->addr = (int)func;
+	patch->addr = (unsigned int)func;
 
 	//Some codegen for 'yall
 	memcpy(patch->origInstructions, func, MAIN_PATCH_SIZE);
@@ -109,19 +114,37 @@ void COSSubstrate_PatchFunc(void* func) {
 	kern_write(func + 0x10, t[4]);
 }
 
+void COSSubstrate_RestoreFunc(void* func) {
+	COSSubstrate_PatchedFunction* patch = private_lookupFromFunctionHashTable((unsigned int)func);
+	if (!patch) return;
+
+	unsigned int* t = (unsigned int*)patch->origInstructions;
+
+	kern_write(func, t[0]);
+	kern_write(func + 4, t[1]);
+	kern_write(func + 8, t[2]);
+	kern_write(func + 0xC, t[3]);
+	kern_write(func + 0x10, t[4]);
+
+	//TODO remove patch from hash table and free memory
+}
+
 /*	Called by the Assembly to handle making the struct.
 	Sure, I could do it with pure ASM, but I'm too lazy for all those #defines.
 */
-COSSubstrate_FunctionContext* private_generateFunctionContext(unsigned int* registers, unsigned int lr) {
+COSSubstrate_FunctionContext* private_generateFunctionContext(unsigned int* args_in, unsigned int lr) {
 	COSSubstrate_FunctionContext* ctx = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(COSSubstrate_FunctionContext), 0x4);
 
 	ctx->source = (void*)(lr - MAIN_PATCH_SIZE);
 
-	ctx->args[0] = registers[0];
-	ctx->args[1] = registers[1];
-	ctx->args[2] = registers[2];
-	ctx->args[3] = registers[3];
-	ctx->args[4] = registers[4];
+	//Save this for the Assembly later on.
+	ctx->substrate_internal = (unsigned int)args_in;
+	//TODO this
+	ctx->args[0] = args_in[0];
+	ctx->args[1] = args_in[1];
+	ctx->args[2] = args_in[2];
+	ctx->args[3] = args_in[3];
+	ctx->args[4] = args_in[4];
 
 	return ctx;
 }
@@ -134,10 +157,31 @@ void (*debug_callback)(COSSubstrate_FunctionContext* ctx);
 */
 void* private_dispatchCallbacksAndGetInstrunctions(COSSubstrate_FunctionContext* ctx) {
 	debug_callback(ctx);
-	return (void*)&((private_lookupFromFunctionHashTable((unsigned int)ctx->source))->mtctr_r2);
+
+	/*	hey! hey! ctx->substrate_internal is controlled by the modules!
+		that's terrible sandboxing!
+		Guess what - Modules can take full control of the kernel if they want.
+		There's really no point trying to sandbox them, and this has the benefit
+		of being thread-safe.
+	*/
+	unsigned int* args_out = (unsigned int*)(ctx->substrate_internal);
+	//TODO this
+	args_out[0] = ctx->args[0];
+	args_out[1] = ctx->args[1];
+	args_out[2] = ctx->args[2];
+	args_out[3] = ctx->args[3];
+	args_out[4] = ctx->args[4];
+
+	unsigned int source = (unsigned int)ctx->source;
+
+	MEMFreeToExpHeap(COSS_MAIN_HEAP, ctx);
+
+	return (void*)&((private_lookupFromFunctionHashTable(source))->mtctr_r2);
 }
 
-/*	I haven't gotten around to setting up a proper way of keeping track of callbacks. */
+/*	I haven't gotten around to setting up a proper way of keeping track of callbacks.
+	TODO, I guess.
+*/
 void debug_setCallback(void(*func)(COSSubstrate_FunctionContext* ctx)) {
 	debug_callback = func;
 }
