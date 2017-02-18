@@ -76,6 +76,10 @@ int Menu_Main() {
 	*/
 	RunCodeAsKernel(&SetupBATs, 0);
 
+	/*	Patch kernel to keep BATs safe.
+	*/
+	RunCodeAsKernel(&PatchKernelBATs, 0);
+
 	/*	Set up memory heap.
 		This is the heap that will be used for basically everything.
 	*/

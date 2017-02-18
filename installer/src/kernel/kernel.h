@@ -68,6 +68,15 @@ extern _kernelmode_ void SetupBATs();
 */
 extern _kernelmode_ void ClearBATs();
 
+/*	Patches the kernel so it won't delete all our BATs constantly.
+	Saves original instructions somewhere not-really-safe.
+	TODO move to somewhere safe
+*/
+extern _kernelmode_ void PatchKernelBATs();
+
+/*	Undoes the patching done by PatchKernelBATs.
+*/
+extern _kernelmode_ void RestoreKernelBATs();
 
 extern int ALongRoutine(int a, int b);
 #endif //KERNEL_H
