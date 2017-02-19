@@ -26,15 +26,15 @@
 #include "kernel/kernel.h"
 
 void memcpy(unsigned char* dst, unsigned char* src, unsigned int size) {
-	int i = 0;
-	for (i; i < size; i++) {
+	int i;
+	for (i = 0; i < size; i++) {
 		dst[i] = src[i];
 	}
 }
 
 void memset(unsigned int* dst, unsigned int fill, unsigned int size) {
-	int i = 0;
-	for (i; i < size; i+=4) {
+	int i;
+	for (i = 0; i < size; i+=4) {
 		dst[i] = fill;
 	}
 }

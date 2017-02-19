@@ -28,3 +28,9 @@ extern void *(* MEMAllocFromExpHeapEx)(int heap, unsigned int size, int align);
 extern int (* MEMCreateExpHeapEx)(void* address, unsigned int size, unsigned short flags);
 extern void *(* MEMDestroyExpHeap)(int heap);
 extern void (* MEMFreeToExpHeap)(int heap, void* ptr);
+
+extern unsigned int* pMEMAllocFromDefaultHeapEx;
+extern unsigned int* pMEMFreeToDefaultHeap;
+
+#define MEMAllocFromDefaultHeapEx(x, y) ((void * (*)(unsigned int, int))(*pMEMAllocFromDefaultHeapEx))(x, y);
+#define MEMFreeToDefaultHeap(x) ((void (*)(void *))(*pMEMFreeToDefaultHeap))(x);

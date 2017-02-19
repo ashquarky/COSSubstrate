@@ -138,7 +138,6 @@ PatchKernelBATs:
 	rfi
 
 /*	Undoes the patching we did above.
-	UNFINISHED: TODO add BATs from above
 
 	_kernelmode_ void RestoreKernelBATs();
 */

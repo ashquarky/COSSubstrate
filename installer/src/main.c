@@ -97,7 +97,7 @@ int Menu_Main() {
 	/*	Allocate temporary Substrate location.
 		This will be where the raw ELF is kept so we can do ELF loadery things.
 	*/
-	void* substrate_tmp = MEMAllocFromExpHeapEx(coss_heap, substrate_file_size, 0x4); //TODO try and allocate at end of heap
+	void* substrate_tmp = MEMAllocFromDefaultHeapEx(substrate_file_size, 0x4);//MEMAllocFromExpHeapEx(coss_heap, substrate_file_size, 0x4); //TODO try and allocate at end of heap
 	if (!substrate_tmp) goto quit;
 	fread(substrate_tmp, substrate_file_size, 1, substrate_file);
 	log_printf("Read in Substrate! Allocated at 0x%08X.\n", substrate_tmp);
@@ -158,7 +158,7 @@ int Menu_Main() {
 	log_printf("Substrate loaded into 0x%08X\n\nRelocating...\n", substrate);
 
 	/* Free the temporary file storage */
-	MEMFreeToExpHeap(coss_heap, substrate_tmp);
+	MEMFreeToDefaultHeap(substrate_tmp);
 
 	/* Apply everyone's favorite - ELF relocations! */
 	relocateElf(substrate, dynamic);

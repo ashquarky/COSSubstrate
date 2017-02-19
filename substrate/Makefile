@@ -31,6 +31,8 @@ ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPRO")
 endif
 
+export VER ?= 550
+
 export SRC	= src
 export SOURCES	= src \
 				  src/patches \
@@ -51,7 +53,7 @@ export CC		= $(PREFIX)gcc
 export AS		= $(PREFIX)gcc
 export LD		= $(PREFIX)ld
 
-export CFLAGS	= -c -fPIE -fno-builtin -Wall
+export CFLAGS	= -c -O1 -fno-strict-aliasing -fPIE -fno-builtin -Wall -DVER=$(VER)
 export SFLAGS	= -c -fPIE
 export LDFLAGS	= -fPIE -shared --unresolved-symbols=report-all #BYO memcpy
 
