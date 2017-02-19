@@ -190,6 +190,28 @@ int Menu_Main() {
 	void (*COSSubstrate_RestoreFunc)(void* func);
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_RestoreFunc", (void**)&COSSubstrate_RestoreFunc);
 
+	int (*COSSubstrate_LoadModuleRaw)(void* module_tmp);
+	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_LoadModuleRaw", (void**)&COSSubstrate_LoadModuleRaw);
+
+	FILE* test_file = fopen("sd:/test.cosm", "rb"); //TODO change path
+
+	/* Get Substrate filesize */
+	fseek(test_file, 0L, SEEK_END);
+	unsigned int test_file_size = ftell(test_file);
+	fseek(test_file, 0L, SEEK_SET);
+
+	void* test_file_tmp = MEMAllocFromDefaultHeapEx(test_file_size, 0x4);
+	if (!test_file_tmp) goto quit;
+	fread(test_file_tmp, test_file_size, 1, test_file);
+
+	fclose(test_file);
+
+	log_printf("Trying to load module...\n");
+	res = COSSubstrate_LoadModuleRaw(test_file_tmp);
+	log_printf("Loaded test module: 0x%08X\n", res);
+
+	MEMFreeToDefaultHeap(test_file_tmp);
+
 	#define FUNC_TO_TRY ALongRoutine(1, 2);
 	#define FUNC_TO_TRY_ADDR &ALongRoutine
 	#define FUNC_TO_TRY_STR "ALongRoutine"

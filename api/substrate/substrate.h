@@ -73,4 +73,7 @@ typedef struct _COSSubstrate_FunctionContext {
 
 //void (*COSSubstrate_PatchFunc)(void* func);
 
+#define COSS_LMR_BAD_MODULE 0xFFFFFFFE
+#define COSS_LMR_OK 0
+
 #endif //_COS_SUBSTRATE_H_

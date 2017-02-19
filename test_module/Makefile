@@ -34,15 +34,9 @@ endif
 export VER ?= 550
 
 export SRC	= src
-export SOURCES	= src \
-				  src/patches \
-				  src/dynamic_libs \
-				  src/kernel \
-				  src/utils \
-				  src/loader \
-				  src/../../ext/UDynLoad/api
-export TARGET	= substrate.cosm
-export INCLUDES	= ../api ../ext/UDynLoad/api src
+export SOURCES	= src 
+export TARGET	= test.cosm
+export INCLUDES	= src
 export LIBDIRS	= $(DEVKITPRO)/libogc
 
 export BUILD	= build/build
