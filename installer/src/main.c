@@ -48,7 +48,11 @@ void relocateElf(void* elf, void* dynamic);
 #define PATCH_VAL 3
 void callback(COSSubstrate_FunctionContext* ctx) {
 	ctx->args[0] = PATCH_VAL;
-	log_printf("\nCallback! 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n\n", ctx->args[0], ctx->args[1], ctx->args[2], ctx->args[3], ctx->args[4]);
+	log_printf("\nCallback!\n\n");
+}
+
+void callback2(COSSubstrate_FunctionContext* ctx) {
+	log_printf("Callback 2!\n\n");
 }
 
 /*
@@ -180,15 +184,11 @@ int Menu_Main() {
 	private_doSetup(substrate, dynamic, OSDynLoad_Acquire, OSDynLoad_FindExport);
 	log_printf("Did setup! substrate: 0x%08X\n", COSS_SPECIFICS->substrate);
 
-	void (*COSSubstrate_PatchFunc)(void* func);
+	void (*COSSubstrate_PatchFunc)(void* func, void(*callback)(COSSubstrate_FunctionContext*));
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_PatchFunc", (void**)&COSSubstrate_PatchFunc);
 
 	void (*COSSubstrate_RestoreFunc)(void* func);
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_RestoreFunc", (void**)&COSSubstrate_RestoreFunc);
-
-	UDynLoad_FindExportDynamic(substrate, dynamic, "debug_setCallback", (void**)&debug_setCallback);
-
-	debug_setCallback(&callback);
 
 	#define FUNC_TO_TRY ALongRoutine(1, 2);
 	#define FUNC_TO_TRY_ADDR &ALongRoutine
@@ -196,7 +196,8 @@ int Menu_Main() {
 
 	unsigned int* t = (unsigned int*)FUNC_TO_TRY_ADDR;
 	log_printf("pre-patch " FUNC_TO_TRY_STR ": %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
-	COSSubstrate_PatchFunc(FUNC_TO_TRY_ADDR);
+	COSSubstrate_PatchFunc(FUNC_TO_TRY_ADDR, &callback);
+	COSSubstrate_PatchFunc(FUNC_TO_TRY_ADDR, &callback2);
 	log_printf(FUNC_TO_TRY_STR " = patched! %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
 
 	DCFlushRange((FUNC_TO_TRY_ADDR - 0x100), 0x200);

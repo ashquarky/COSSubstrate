@@ -35,6 +35,7 @@
 
 //But first... A hash table.
 //TODO Mutexes on the hash table? Maybe?
+//TODO move to dedicated file
 
 typedef struct _COSSubstrate_PatchedFunction {
 	/* Make sure to keep this aligned to 0x4! */
@@ -43,6 +44,9 @@ typedef struct _COSSubstrate_PatchedFunction {
 	unsigned int bctr;
 
 	int addr;
+
+	unsigned int num_callbacks;
+	unsigned int* callbacks;
 
 	void* next;
 } COSSubstrate_PatchedFunction;
@@ -91,29 +95,44 @@ COSSubstrate_PatchedFunction* private_lookupFromFunctionHashTable(unsigned int a
 
 	I think "function patcher" and I think actually overwriting the function :3
 */
-void COSSubstrate_PatchFunc(void* func) {
-	COSSubstrate_PatchedFunction* patch = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(COSSubstrate_PatchedFunction), 0x4);
-	patch->addr = (unsigned int)func;
+void COSSubstrate_PatchFunc(void* func, void(*callback)()) {
+	COSSubstrate_PatchedFunction* patch = private_lookupFromFunctionHashTable((unsigned int)func);
+	if (patch) {
+		unsigned int* new_callbacks = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, (patch->num_callbacks + 1) * sizeof(callback), 0x4);
+		memcpy(new_callbacks, patch->callbacks, patch->num_callbacks * sizeof(callback));
+		MEMFreeToExpHeap(COSS_MAIN_HEAP, patch->callbacks);
 
-	//Some codegen for 'yall
-	memcpy(patch->origInstructions, func, MAIN_PATCH_SIZE);
-	patch->bctr = *(unsigned int*)(&bctr);
-	patch->mtctr_r2 = *(unsigned int*)(&mtctr_r2);
+		new_callbacks[patch->num_callbacks++] = (unsigned int)callback;
+		patch->callbacks = new_callbacks;
+	} else {
+		patch = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(COSSubstrate_PatchedFunction), 0x4);
+		patch->addr = (unsigned int)func;
 
-	private_addToFunctionHashTable(patch);
+		//Some codegen for 'yall
+		memcpy(patch->origInstructions, func, MAIN_PATCH_SIZE);
+		patch->bctr = *(unsigned int*)(&bctr);
+		patch->mtctr_r2 = *(unsigned int*)(&mtctr_r2);
 
-	DCFlushRange(patch, sizeof(COSSubstrate_PatchedFunction));
-	ICInvalidateRange(patch, sizeof(COSSubstrate_PatchedFunction));
+		patch->num_callbacks = 1;
+		patch->callbacks = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(callback), 0x4);
+		patch->callbacks[0] = (unsigned int)callback;
 
-	unsigned int* t = (unsigned int*)&MAIN_PATCH;
-	//TODO this is ugly but looping over MAIN_PATCH_SIZE bugs out so often that I don't care
-	kern_write(func, t[0]);
-	kern_write(func + 4, t[1]);
-	kern_write(func + 8, t[2]);
-	kern_write(func + 0xC, t[3]);
-	kern_write(func + 0x10, t[4]);
+		private_addToFunctionHashTable(patch);
+
+		DCFlushRange(patch, sizeof(COSSubstrate_PatchedFunction));
+		ICInvalidateRange(patch, sizeof(COSSubstrate_PatchedFunction));
+
+		unsigned int* t = (unsigned int*)&MAIN_PATCH;
+		//TODO this is ugly but looping over MAIN_PATCH_SIZE bugs out so often that I don't care
+		kern_write(func, t[0]);
+		kern_write(func + 4, t[1]);
+		kern_write(func + 8, t[2]);
+		kern_write(func + 0xC, t[3]);
+		kern_write(func + 0x10, t[4]);
+	}
 }
 
+/*	TODO rewrite this to deal with callbacks */
 void COSSubstrate_RestoreFunc(void* func) {
 	COSSubstrate_PatchedFunction* patch = private_lookupFromFunctionHashTable((unsigned int)func);
 	if (!patch) return;
@@ -149,14 +168,17 @@ COSSubstrate_FunctionContext* private_generateFunctionContext(unsigned int* args
 	return ctx;
 }
 
-void (*debug_callback)(COSSubstrate_FunctionContext* ctx);
-
 /*	Called by the Assmebly to route out the C callbacks.
 	Also returns the first of the original instructions to make life easier
 	on the ASM side of things.
 */
 void* private_dispatchCallbacksAndGetInstrunctions(COSSubstrate_FunctionContext* ctx) {
-	debug_callback(ctx);
+	COSSubstrate_PatchedFunction* patch = private_lookupFromFunctionHashTable((unsigned int)ctx->source);
+	//TODO callback priority
+	int i;
+	for (i = 0; i < patch->num_callbacks; i++) {
+		((void (*)(COSSubstrate_FunctionContext*))(patch->callbacks[i]))(ctx);
+	}
 
 	/*	hey! hey! ctx->substrate_internal is controlled by the modules!
 		that's terrible sandboxing!
@@ -172,16 +194,7 @@ void* private_dispatchCallbacksAndGetInstrunctions(COSSubstrate_FunctionContext*
 	args_out[3] = ctx->args[3];
 	args_out[4] = ctx->args[4];
 
-	unsigned int source = (unsigned int)ctx->source;
-
 	MEMFreeToExpHeap(COSS_MAIN_HEAP, ctx);
 
-	return (void*)&((private_lookupFromFunctionHashTable(source))->mtctr_r2);
-}
-
-/*	I haven't gotten around to setting up a proper way of keeping track of callbacks.
-	TODO, I guess.
-*/
-void debug_setCallback(void(*func)(COSSubstrate_FunctionContext* ctx)) {
-	debug_callback = func;
+	return (void*)&(patch->mtctr_r2);
 }
