@@ -37,11 +37,11 @@ SOURCES		:=	src \
 				src/system \
 				src/utils \
 				src/fs \
-				ext/UDynLoad/api
+				../ext/UDynLoad/api
 DATA		:=
 
 INCLUDES	:=  src \
-				ext/UDynLoad/api \
+				../ext/UDynLoad/api \
 				../api
 
 #---------------------------------------------------------------------------------
