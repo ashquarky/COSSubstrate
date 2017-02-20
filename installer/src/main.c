@@ -67,7 +67,7 @@ int Menu_Main() {
 	/*	Allows me to be lazy and use C FILE functions. */
 	mount_sd_fat("sd"); /* fs/sd_fat_devoptab.h */
 
-	log_init("192.168.192.37"); /* log_ functions in utils/logger.h */
+	log_init("192.168.192.2"); /* log_ functions in utils/logger.h */
 	log_print("Hello World!\n");
 
 	/* 	Install my improved kern_read/write.
