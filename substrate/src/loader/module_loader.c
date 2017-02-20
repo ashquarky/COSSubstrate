@@ -103,9 +103,9 @@ int COSSubstrate_LoadModuleRaw(void* module_tmp) {
 
 	int (*_start)();
 	UDynLoad_FindExportDynamic(module, dynamic, "_start", (void**)&_start);
-	return _start();
+	_start();
 
-	//return COSS_LMR_OK;
+	return COSS_LMR_OK;
 }
 
 unsigned int makeB(void* dst, void* src) {

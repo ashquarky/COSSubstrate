@@ -86,3 +86,49 @@ kern_write:
 	mtlr r0
 
 	blr
+
+/*	kern_write for physical addresses. Also gets around
+	0x01000000 weirdness.
+	Maps phys to itself and writes.
+
+	_kernelmode_ void KernWritePhys(void* phys, unsigned int val);
+*/
+.globl KernWritePhys
+KernWritePhys:
+	//Back up existing DBAT0
+	mfdbatu r5, 0
+	mfdbatl r6, 0
+
+	//Mask out phys
+	andis. r9, r3, 0xFFFC
+
+	//Generate DBAT0U
+	ori r7, r9, 0xF
+	//Generate DBAT0L
+	ori r8, r9, 0x32
+
+	//Write in our new DBAT0
+	mtdbatu 0, r7
+	mtdbatl 0, r8
+
+	//Because PowerPC
+	eieio
+	isync
+
+	//The physical address $(PHYS) is now mapped to the virual address $(PHYS)
+	stw r4, 0(r3)
+
+	//Flush caches
+	dcbf r3, 0
+	icbi r3, 0
+
+	//Restore original DBAT0
+	mtdbatu 0, r5
+	mtdbatl 0, r6
+
+	//Because POWERFUL
+	eieio
+	isync
+
+	//Return
+	rfi

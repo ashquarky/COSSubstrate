@@ -123,12 +123,21 @@ void COSSubstrate_PatchFunc(void* func, void(*callback)()) {
 		ICInvalidateRange(patch, sizeof(COSSubstrate_PatchedFunction));
 
 		unsigned int* t = (unsigned int*)&MAIN_PATCH;
+		unsigned int rfunc = (unsigned int)OSEffectiveToPhysical(func);
 		//TODO this is ugly but looping over MAIN_PATCH_SIZE bugs out so often that I don't care
-		kern_write(func, t[0]);
-		kern_write(func + 4, t[1]);
-		kern_write(func + 8, t[2]);
-		kern_write(func + 0xC, t[3]);
-		kern_write(func + 0x10, t[4]);
+		if (rfunc) {
+			RunCodeAsKernel(&KernWritePhys, rfunc, t[0]);
+			RunCodeAsKernel(&KernWritePhys, rfunc + 4, t[1]);
+			RunCodeAsKernel(&KernWritePhys, rfunc + 8, t[2]);
+			RunCodeAsKernel(&KernWritePhys, rfunc + 0xC, t[3]);
+			RunCodeAsKernel(&KernWritePhys, rfunc + 0x10, t[4]);
+		} else {
+			kern_write(func, t[0]);
+			kern_write(func + 4, t[1]);
+			kern_write(func + 8, t[2]);
+			kern_write(func + 0xC, t[3]);
+			kern_write(func + 0x10, t[4]);
+		}
 	}
 }
 
@@ -138,12 +147,21 @@ void COSSubstrate_RestoreFunc(void* func) {
 	if (!patch) return;
 
 	unsigned int* t = (unsigned int*)patch->origInstructions;
+	unsigned int rfunc = (unsigned int)OSEffectiveToPhysical(func);
 
-	kern_write(func, t[0]);
-	kern_write(func + 4, t[1]);
-	kern_write(func + 8, t[2]);
-	kern_write(func + 0xC, t[3]);
-	kern_write(func + 0x10, t[4]);
+	if (rfunc) {
+		RunCodeAsKernel(&KernWritePhys, rfunc, t[0]);
+		RunCodeAsKernel(&KernWritePhys, rfunc + 4, t[1]);
+		RunCodeAsKernel(&KernWritePhys, rfunc + 8, t[2]);
+		RunCodeAsKernel(&KernWritePhys, rfunc + 0xC, t[3]);
+		RunCodeAsKernel(&KernWritePhys, rfunc + 0x10, t[4]);
+	} else {
+		kern_write(func, t[0]);
+		kern_write(func + 4, t[1]);
+		kern_write(func + 8, t[2]);
+		kern_write(func + 0xC, t[3]);
+		kern_write(func + 0x10, t[4]);
+	}
 
 	//TODO remove patch from hash table and free memory
 }

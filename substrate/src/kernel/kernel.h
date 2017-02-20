@@ -23,5 +23,11 @@
 	THE SOFTWARE.
 */
 
+#define _kernelmode_
+
 extern unsigned int kern_read(const void* addr);
 extern void kern_write(const void* addr, unsigned int val);
+
+extern unsigned int RunCodeAsKernel(void(*codeToRun), unsigned int r3, unsigned int r4);
+
+extern _kernelmode_ void KernWritePhys(void* phys, unsigned int val);
