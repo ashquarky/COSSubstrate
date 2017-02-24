@@ -169,6 +169,7 @@ void relocateElf(void* elf, void* dynamic) {
 	for (int i = 0; i < 10; i++) {
 		if (ELF32_ST_TYPE(sym[i].st_info) == STT_SECTION) {
 			text_addr = sym[i].st_value;
+			break;
 		}
 	}
 	#define IF_NOT_TEXT(x) ((x == text_addr) ? 0 : x)
