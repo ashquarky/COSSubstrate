@@ -1,7 +1,7 @@
 /*	Cafe OS Substrate
 
-	main.c - Main Substrate logic.
-	No partner file.
+	dynamic_linker.h - Header for dynamic_linker.c.
+	Paired with dynamic_linker.c.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
 
@@ -23,33 +23,23 @@
 	THE SOFTWARE.
 */
 
-#include <string.h>
-#include "patches/patches.h"
-#include "dynamic_libs/os_functions.h"
-#include "dynamic_libs/mem_functions.h"
-#include "loader/dynamic_linker.h"
-#include <substrate/substrate.h>
+#ifndef _DYNAMIC_LINKER_H_
+#define _DYNAMIC_LINKER_H_
 
-int testSubroutine() {
-	return 0x69690000;
-}
+#define MODULE_NAME_SZ 20
 
-int _start() {
-	return testSubroutine() | 0x6969;
-}
+typedef struct _COSSubstrate_Module {
+	char name[20];
+	void* file;
+	void* dynamic;
 
-/*	Takes in data from the Installer and arranges it in memory.
-	This minimizes updates to the Installer.
-*/
-void private_doSetup(void* substrate, void* substrateDynamic, void* OSDynLoad_Acquire, void* OSDynLoad_FindExport) {
-	COSS_SPECIFICS->COSSDynLoad_Acquire = &COSSDynLoad_Acquire;
-	COSS_SPECIFICS->COSSDynLoad_FindExport = &COSSDynLoad_FindExport;
-	COSS_SPECIFICS->OSDynLoad_Acquire = OSDynLoad_Acquire;
-	COSS_SPECIFICS->OSDynLoad_FindExport = OSDynLoad_FindExport;
-	InitOSFunctionPointers();
-	COSSubstrate_Module* self = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(COSSubstrate_Module), 0x4);
-	self->file = substrate;
-	self->dynamic = substrateDynamic;
-	memcpy(&self->name, &"substrate.cosm", MODULE_NAME_SZ);
-	private_addToModuleHashTable(self);
-}
+	void* next;
+} COSSubstrate_Module;
+
+void private_addToModuleHashTable(COSSubstrate_Module* module);
+COSSubstrate_Module* private_lookupFromModuleHashTable(char* name);
+
+int COSSDynLoad_Acquire(char* cosm, unsigned int* handle);
+int COSSDynLoad_FindExport(unsigned int handle, char* symbol, void* addr);
+
+#endif

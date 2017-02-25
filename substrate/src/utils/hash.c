@@ -41,3 +41,17 @@ unsigned short hashInt(unsigned int in) {
 
 	return hash;
 }
+
+/*	Above algorithm adapted for strings.
+*/
+unsigned short hashStr(char* str) {
+	unsigned short hash = 0;
+
+	int i;
+	for (i = 0; str[i] != 0x00; i++) {
+		hash += str[i];
+		hash *= MULTIPLIER;
+	}
+
+	return hash;
+}

@@ -34,10 +34,9 @@ endif
 export VER ?= 550
 
 export SRC	= src
-export SOURCES	= src \
-				  src/../../ext/UDynLoad/api
+export SOURCES	= src
 export TARGET	= test.cosm
-export INCLUDES	= src ../ext/UDynLoad/api ../api
+export INCLUDES	= src ../api
 export LIBDIRS	= $(DEVKITPRO)/libogc
 
 export BUILD	= build/build

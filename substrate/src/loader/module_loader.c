@@ -1,6 +1,6 @@
 /*	Cafe OS Substrate
 
-	module_loader.c - Loads and manages modules.
+	module_loader.c - Loads modules.
 	No partner file.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
@@ -30,17 +30,15 @@
 #include "dynamic_libs/os_functions.h"
 #include "dynamic_libs/mem_functions.h"
 #include "loader/plt_resolve.h"
+#include "loader/dynamic_linker.h"
 #include <substrate/substrate.h>
-
-/*	TODO keep track of modules properly to allow removal and dynamic loading
-*/
 
 void relocateElf(void* elf, void* dynamic);
 
 /*	Loads in a module from memory.
 	I may or may not have copied this from the Installer.
 */
-int COSSubstrate_LoadModuleRaw(void* module_tmp) {
+int COSSubstrate_LoadModuleRaw(void* module_tmp, char* name) {
 	int res = UDynLoad_CheckELF(module_tmp);
 	if (res != UDYNLOAD_ELF_OK) {
 		return COSS_LMR_BAD_MODULE;
@@ -101,7 +99,13 @@ int COSSubstrate_LoadModuleRaw(void* module_tmp) {
 	DCFlushRange(module, module_size);
 	ICInvalidateRange(module, module_size);
 
-	int (*_start)();
+	COSSubstrate_Module* mod = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(COSSubstrate_Module), 0x4);
+	mod->file = module;
+	mod->dynamic = dynamic;
+	memcpy(&mod->name, name, MODULE_NAME_SZ);
+	private_addToModuleHashTable(mod);
+
+	int (*_start)(); //_start should be a void, this just makes debugging easy in a pinch.
 	UDynLoad_FindExportDynamic(module, dynamic, "_start", (void**)&_start);
 	_start();
 

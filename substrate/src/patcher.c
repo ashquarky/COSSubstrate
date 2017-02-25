@@ -78,13 +78,13 @@ COSSubstrate_PatchedFunction* private_lookupFromFunctionHashTable(unsigned int a
 
 	unsigned short hash = hashInt(addr);
 	if (patchedFunctions[hash]) {
-		if (patchedFunctions[hash]->addr == addr) return patchedFunctions[hash];
 		COSSubstrate_PatchedFunction* p = patchedFunctions[hash];
 		while (p != 0) {
+			if (patchedFunctions[hash]->addr == addr) return patchedFunctions[hash];
 			p = (COSSubstrate_PatchedFunction*)p->next;
 		}
-		return p;
-	} else return 0;
+	}
+	return 0;
 }
 
 //And now... your function patcher

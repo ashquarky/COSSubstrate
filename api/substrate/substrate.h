@@ -40,8 +40,8 @@
 
 typedef struct _COSSubstrate_Specifics {
 	/* Used for dynamic linking */
-	void* substrate;
-	void* substrateDynamic;
+	int (*COSSDynLoad_Acquire)(char* cosm, unsigned int* handle);
+	int (*COSSDynLoad_FindExport)(unsigned int handle, char* symbol, void* addr);
 
 	/* Average Wii U junk */
 	int (*OSDynLoad_Acquire)(const char* rpl, unsigned int* handle);

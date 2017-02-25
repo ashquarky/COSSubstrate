@@ -27,5 +27,6 @@
 #define _HASH_H_
 
 unsigned short hashInt(unsigned int in);
+unsigned short hashStr(char* str);
 
 #endif //_HASH_H_
