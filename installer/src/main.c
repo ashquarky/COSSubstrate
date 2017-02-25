@@ -176,25 +176,8 @@ int Menu_Main() {
 		FindExportDynamic to get the function. The normal FindExport uses
 		.symtab and .strtab, which didn't make it past the loading phase.
 	*/
-	res = UDynLoad_FindExportDynamic(substrate, dynamic, "_start", (void**)&_start);
-	res = _start();
-	log_printf("\n_start: 0x%08X\n", res);
-
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "private_doSetup", (void**)&private_doSetup);
 	private_doSetup(substrate, dynamic, OSDynLoad_Acquire, OSDynLoad_FindExport);
-	log_printf("Did setup! FindExport: 0x%08X\n", COSS_SPECIFICS->COSSDynLoad_FindExport);
-
-	void (*COSSubstrate_PatchFunc)(void* func, void(*callback)(COSSubstrate_FunctionContext*));
-	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_PatchFunc", (void**)&COSSubstrate_PatchFunc);
-
-	int (*COSSDynLoad_Acquire)(char* name, unsigned int* handle);
-	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSDynLoad_Acquire", (void**)&COSSDynLoad_Acquire);
-
-	int (*COSSDynLoad_FindExport)(unsigned int handle, char* func, void* addr);
-	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSDynLoad_FindExport", (void**)&COSSDynLoad_FindExport);
-
-	void (*COSSubstrate_RestoreFunc)(void* func);
-	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_RestoreFunc", (void**)&COSSubstrate_RestoreFunc);
 
 	int (*COSSubstrate_LoadModuleRaw)(void* module_tmp, char* name);
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_LoadModuleRaw", (void**)&COSSubstrate_LoadModuleRaw);
@@ -212,46 +195,10 @@ int Menu_Main() {
 
 	fclose(test_file);
 
-	log_printf("Trying to load module...\n");
 	res = COSSubstrate_LoadModuleRaw(test_file_tmp, "test.cosm");
 	log_printf("Loaded test module: 0x%08X\n", res);
 
 	MEMFreeToDefaultHeap(test_file_tmp);
-
-	unsigned int test_handle;
-	res = COSSDynLoad_Acquire("test.cosm", &test_handle);
-
-	log_printf("Test module handle: 0x%08X; res 0x%08X\n", test_handle, res);
-
-	void (*test_start)();
-	res = COSSDynLoad_FindExport(test_handle, "_start", &test_start);
-
-	log_printf("Test _start: 0x%08X; res 0x%08X\n", test_start, res);
-
-	#define FUNC_TO_TRY ALongRoutine(1, 2);
-	#define FUNC_TO_TRY_ADDR &ALongRoutine
-	#define FUNC_TO_TRY_STR "ALongRoutine"
-
-	unsigned int* t = (unsigned int*)FUNC_TO_TRY_ADDR;
-	log_printf("pre-patch " FUNC_TO_TRY_STR ": %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
-	COSSubstrate_PatchFunc(FUNC_TO_TRY_ADDR, &callback);
-	COSSubstrate_PatchFunc(FUNC_TO_TRY_ADDR, &callback2);
-	log_printf(FUNC_TO_TRY_STR " = patched! %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
-
-	DCFlushRange((FUNC_TO_TRY_ADDR - 0x100), 0x200);
-	ICInvalidateRange((FUNC_TO_TRY_ADDR - 0x100), 0x200);
-
-	int x = FUNC_TO_TRY;
-
-	log_printf(FUNC_TO_TRY_STR " returned: 0x%08X\n", x);
-
-	/* 	Funny story - if my Assembly properly followed calling convention, this
-		function pointer would take us halfway through FUNC_TO_TRY.
-
-		Good thing I stopped doing that.
-	*/
-	COSSubstrate_RestoreFunc(FUNC_TO_TRY_ADDR);
-	log_printf(FUNC_TO_TRY_STR " = restored! %08X %08X %08X %08X %08X %08X\n", t[0], t[1], t[2], t[3], t[4], t[5]);
 quit:
 	fclose(substrate_file);
 

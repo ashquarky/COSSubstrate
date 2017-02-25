@@ -30,13 +30,7 @@
 #include "loader/dynamic_linker.h"
 #include <substrate/substrate.h>
 
-int testSubroutine() {
-	return 0x69690000;
-}
-
-int _start() {
-	return testSubroutine() | 0x6969;
-}
+void _start() {}
 
 /*	Takes in data from the Installer and arranges it in memory.
 	This minimizes updates to the Installer.
