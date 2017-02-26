@@ -1,6 +1,6 @@
 /*	Cafe OS Substrate
 
-	main.c - Main Substrate logic.
+	substrate_nofunc.h - Substrate API header wrapper.
 	No partner file.
 
 	https://github.com/QuarkTheAwesome/COSSubstrate
@@ -23,27 +23,9 @@
 	THE SOFTWARE.
 */
 
-#include <string.h>
-#include "patches/patches.h"
-#include "dynamic_libs/os_functions.h"
-#include "dynamic_libs/mem_functions.h"
-#include "loader/dynamic_linker.h"
-#include <substrate/substrate_nofunc.h>
-
-void _start() {}
-
-/*	Takes in data from the Installer and arranges it in memory.
-	This minimizes updates to the Installer.
+/*	In order to avoid linking errors, it can be useful to turn off
+	the function pointers present in substrate.h. This is what this does.
 */
-void private_doSetup(void* substrate, void* substrateDynamic, void* OSDynLoad_Acquire, void* OSDynLoad_FindExport) {
-	COSS_SPECIFICS->COSSDynLoad_Acquire = &COSSDynLoad_Acquire;
-	COSS_SPECIFICS->COSSDynLoad_FindExport = &COSSDynLoad_FindExport;
-	COSS_SPECIFICS->OSDynLoad_Acquire = OSDynLoad_Acquire;
-	COSS_SPECIFICS->OSDynLoad_FindExport = OSDynLoad_FindExport;
-	InitOSFunctionPointers();
-	COSSubstrate_Module* self = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, sizeof(COSSubstrate_Module), 0x4);
-	self->file = substrate;
-	self->dynamic = substrateDynamic;
-	memcpy(&self->name, &"substrate.cosm", MODULE_NAME_SZ);
-	private_addToModuleHashTable(self);
-}
+#define COSS_NO_FUNC_POINTERS
+#include "substrate.h"
+#undef COSS_NO_FUNC_POINTERS

@@ -29,7 +29,7 @@
 #include "dynamic_libs/mem_functions.h"
 #include "utils/hash.h"
 #include "loader/dynamic_linker.h"
-#include <substrate/substrate.h>
+#include <substrate/substrate_nofunc.h>
 
 COSSubstrate_Module** modules = 0;
 

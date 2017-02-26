@@ -31,7 +31,7 @@
 #include "patches/patches.h"
 #include "utils/hash.h"
 
-#include <substrate/substrate.h>
+#include <substrate/substrate_nofunc.h>
 
 //But first... A hash table.
 //TODO Mutexes on the hash table? Maybe?
@@ -89,13 +89,9 @@ COSSubstrate_PatchedFunction* private_lookupFromFunctionHashTable(unsigned int a
 
 //And now... your function patcher
 
-/*	WIP function to see if my codegen works okay
-	From this alone you can probably tell this is going to be a very
-	different type of patcher to what we're used to
-
-	I think "function patcher" and I think actually overwriting the function :3
+/*	Adds a callback to a function, patching if neccesary.
 */
-void COSSubstrate_PatchFunc(void* func, void(*callback)()) {
+void COSSubstrate_PatchFunc(void* func, void(*callback)(COSSubstrate_FunctionContext* ctx)) {
 	COSSubstrate_PatchedFunction* patch = private_lookupFromFunctionHashTable((unsigned int)func);
 	if (patch) {
 		unsigned int* new_callbacks = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, (patch->num_callbacks + 1) * sizeof(callback), 0x4);

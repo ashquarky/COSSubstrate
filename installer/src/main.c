@@ -179,7 +179,6 @@ int Menu_Main() {
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "private_doSetup", (void**)&private_doSetup);
 	private_doSetup(substrate, dynamic, OSDynLoad_Acquire, OSDynLoad_FindExport);
 
-	int (*COSSubstrate_LoadModuleRaw)(void* module_tmp, char* name);
 	res = UDynLoad_FindExportDynamic(substrate, dynamic, "COSSubstrate_LoadModuleRaw", (void**)&COSSubstrate_LoadModuleRaw);
 
 	FILE* test_file = fopen("sd:/test.cosm", "rb"); //TODO change path

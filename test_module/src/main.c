@@ -1,7 +1,6 @@
 #include <substrate/substrate.h>
 
 void (*OSScreenPutFontEx)(int buffer, int x, int y, char* msg);
-void (*COSSubstrate_PatchFunc)(void* func, void(*callback)(COSSubstrate_FunctionContext*));
 
 void callback(COSSubstrate_FunctionContext* ctx) {
 	ctx->args[3] = (unsigned int)("Hello From the Substrate!");

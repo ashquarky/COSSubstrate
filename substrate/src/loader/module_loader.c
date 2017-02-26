@@ -31,7 +31,7 @@
 #include "dynamic_libs/mem_functions.h"
 #include "loader/plt_resolve.h"
 #include "loader/dynamic_linker.h"
-#include <substrate/substrate.h>
+#include <substrate/substrate_nofunc.h>
 
 void relocateElf(void* elf, void* dynamic);
 

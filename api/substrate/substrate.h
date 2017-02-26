@@ -36,10 +36,11 @@
 #define COSS_API_MINOR 0
 #define COSS_API_PATCH 1
 
-#ifndef __ASSEMBLY //kinda like __CPLUSPLUS but for assembly
-
+#ifndef __ASSEMBLY //kinda like __CPLUSPLUS but for assembly; turns off everything but #defines
 typedef struct _COSSubstrate_Specifics {
-	/* Used for dynamic linking */
+	/*	Very similar to native OSDynLoad functions. Must load any non-Substrate
+		modules first.
+	*/
 	int (*COSSDynLoad_Acquire)(char* cosm, unsigned int* handle);
 	int (*COSSDynLoad_FindExport)(unsigned int handle, char* symbol, void* addr);
 
@@ -47,9 +48,39 @@ typedef struct _COSSubstrate_Specifics {
 	int (*OSDynLoad_Acquire)(const char* rpl, unsigned int* handle);
 	int (*OSDynLoad_FindExport)(unsigned int handle, int isdata, const char* symbol, void* address);
 } COSSubstrate_Specifics;
+#endif //__ASSEMBLY
+
+#define COSS_MEM_BASE (void*)0x60000000
+#define COSS_MEM_SIZE 0x00800000
+
+#define COSS_MAIN_HEAP_OFFSET +0x200
+
+/*	Main heap pointer; use MEMAllocFromExpHeapEx to allocate.
+*/
+#define COSS_MAIN_HEAP (int)(COSS_MEM_BASE COSS_MAIN_HEAP_OFFSET)
+#define COSS_MAIN_HEAP_SIZE (COSS_MEM_SIZE - COSS_MAIN_HEAP_OFFSET)
+
+/*	Pointer to COSSubstrate_Specifics struct.
+	e.g. COSS_SPECIFICS->OSDynLoad_Acquire();
+*/
+#define COSS_SPECIFICS ((COSSubstrate_Specifics*)COSS_MEM_BASE)
+
+
+/*******************************************************************************
+Patching Functions - see patcher.c
+*******************************************************************************/
+#ifndef __ASSEMBLY
 
 typedef struct _COSSubstrate_FunctionContext {
+	/*	Address of function that triggered the callback.
+		Should be equal to value from OSDynLoad.
+	*/
 	void* source;
+	/*	Function arguments.
+		If written, the new value will be passed into the original function
+		appropriately.
+		Does not work correctly with floats.
+	*/
 	unsigned int args[10];
 
 	/*	TODO: Consider renaming to mc_hammer
@@ -58,20 +89,39 @@ typedef struct _COSSubstrate_FunctionContext {
 	unsigned int substrate_internal;
 } COSSubstrate_FunctionContext;
 
+#ifndef COSS_NO_FUNC_POINTERS //This is super useful inside the Substrate code
+
+/*	Hooks given callback into a function, patching if neccesary.
+	Multiple callbacks are supported.
+	Callbaks are dispatched BEFORE the patched function is ran.
+*/
+void (*COSSubstrate_PatchFunc)(void* func, void(*callback)(COSSubstrate_FunctionContext* ctx));
+/*	Not ready for use at this point.
+*/
+void (*COSSubstrate_RestoreFunc)(void* func);
+
+#endif //COSS_NO_FUNC_POINTERS
 #endif //__ASSEMBLY
 
-#define COSS_MEM_BASE (void*)0x60000000
-#define COSS_MEM_SIZE 0x00800000
+/*******************************************************************************
+Module Loading - see module_loader.c
+*******************************************************************************/
+#ifndef __ASSEMBLY
+#ifndef COSS_NO_FUNC_POINTERS
 
-#define COSS_MAIN_HEAP_OFFSET +0x200
-#define COSS_MAIN_HEAP_SIZE_OFFSET -0x200
+/*	Loads a module from a given memory address with a given identifier.
 
-#define COSS_MAIN_HEAP (int)(COSS_MEM_BASE COSS_MAIN_HEAP_OFFSET)
-#define COSS_MAIN_HEAP_SIZE (COSS_MEM_SIZE COSS_MAIN_HEAP_SIZE_OFFSET)
+	Module is copied into internal Substrate heap, so module_tmp can safely
+	be freed once this function returns.
+	name is used with COSSDynLoad_Acquire; since there's not neccesarily a way
+	of identifying an ELF after it's in memory. Can be on the stack, no biggie.
 
-#define COSS_SPECIFICS ((COSSubstrate_Specifics*)COSS_MEM_BASE)
+	Returns a COSS_LMR code from below.
+*/
+int (*COSSubstrate_LoadModuleRaw)(void* module_tmp, char* name);
 
-//void (*COSSubstrate_PatchFunc)(void* func);
+#endif //COSS_NO_FUNC_POINTERS
+#endif //__ASSEMBLY
 
 #define COSS_LMR_BAD_MODULE 0xFFFFFFFE
 #define COSS_LMR_OK 0

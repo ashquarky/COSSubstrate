@@ -22,7 +22,7 @@
  * distribution.
  ***************************************************************************/
 #include "os_functions.h"
-#include <substrate/substrate.h>
+#include <substrate/substrate_nofunc.h>
 
 unsigned int coreinit_handle = 0;
 
