@@ -47,6 +47,7 @@ typedef struct _COSSubstrate_PatchedFunction {
 
 	unsigned int num_callbacks;
 	unsigned int* callbacks;
+	unsigned int* debug;
 
 	void* next;
 } COSSubstrate_PatchedFunction;
@@ -135,6 +136,28 @@ void COSSubstrate_PatchFunc(void* func, void(*callback)(COSSubstrate_FunctionCon
 			kern_write(func + 0x10, t[4]);
 		}
 	}
+}
+
+int COSSubstrate_RemoveCallback(void* func, void(*callback)(COSSubstrate_FunctionContext* ctx)) {
+	char buf[255];
+	COSSubstrate_PatchedFunction* patch = private_lookupFromFunctionHashTable((unsigned int)func);
+	__os_snprintf(buf, 255, "");
+	if (patch) {
+		for (int i = 0; i < patch->num_callbacks; i++) {
+			if (patch->callbacks[i] == (unsigned int)callback) {
+				unsigned char* new_callbacks = MEMAllocFromExpHeapEx(COSS_MAIN_HEAP, (patch->num_callbacks + 1) * sizeof(callback), 0x4);
+				//TODO debug these offsets
+				memcpy(new_callbacks, patch->callbacks, (i - 1) * sizeof(callback));
+				memcpy(new_callbacks + ((i - 1) * sizeof(callback)), ((unsigned char*)patch->callbacks) + ((i - 1) * sizeof(callback)), (patch->num_callbacks + i) * sizeof(callback));
+				//MEMFreeToExpHeap(COSS_MAIN_HEAP, patch->callbacks);
+
+				//patch->callbacks = new_callbacks;
+				patch->debug = (unsigned int*)new_callbacks;
+			}
+		}
+		return patch;
+	}
+	return 0;
 }
 
 /*	TODO rewrite this to deal with callbacks */

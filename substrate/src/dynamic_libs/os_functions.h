@@ -119,6 +119,7 @@ extern void (* OSSetExceptionCallback)(u8 exceptionType, exception_callback newC
 extern int (* LiWaitIopComplete)(int unknown_syscall_arg_r3, int * remaining_bytes);
 extern int (* LiWaitIopCompleteWithInterrupts)(int unknown_syscall_arg_r3, int * remaining_bytes);
 
+extern void (* OSReport)(char* msg);
 
 #ifdef __cplusplus
 }
